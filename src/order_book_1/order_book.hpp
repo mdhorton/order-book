@@ -18,8 +18,11 @@ class OrderBook {
    uint32_t ask_count_{0};
 
 public:
-   OrderBook(const int32_t price_divisor, const int32_t price_offset)
-      : price_divisor_(price_divisor), price_offset_(price_offset) {
+   OrderBook(
+      const int32_t price_divisor,
+      const int32_t price_offset)
+      : price_divisor_(price_divisor),
+        price_offset_(price_offset) {
    }
 
    void HandleNewOrder(const NewOrder &new_order) {
