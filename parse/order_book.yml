@@ -1,4 +1,4 @@
-name: order-book
+name: order_book
 channels:
   - conda-forge
 dependencies:

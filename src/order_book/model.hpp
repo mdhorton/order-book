@@ -37,8 +37,9 @@ struct CancelOrder {
    uint32_t order_id;
 };
 
-struct OrderAdd {
-   uint16_t market_id;
+// 23 bytes
+struct ItchOrderAdd {
+   uint16_t stock_code;
    uint64_t timestamp;
    uint32_t order_id;
    bool bid;
@@ -46,15 +47,17 @@ struct OrderAdd {
    uint32_t price;
 } __attribute__((packed));
 
-struct OrderExecuted {
-   uint16_t market_id;
+// 20 bytes
+struct ItchOrderExecuted {
+   uint16_t stock_code;
    uint64_t timestamp;
    uint32_t order_id;
    uint32_t quantity;
 } __attribute__((packed));
 
-struct OrderExecutedPrice {
-   uint16_t market_id;
+// 25 bytes
+struct ItchOrderExecutedPrice {
+   uint16_t stock_code;
    uint64_t timestamp;
    uint32_t order_id;
    uint32_t quantity;
@@ -62,21 +65,24 @@ struct OrderExecutedPrice {
    uint32_t price;
 } __attribute__((packed));
 
-struct OrderCancel {
-   uint16_t market_id;
+// 20 bytes
+struct ItchOrderCancel {
+   uint16_t stock_code;
    uint64_t timestamp;
    uint32_t order_id;
    uint32_t quantity;
 } __attribute__((packed));
 
-struct OrderDelete {
-   uint16_t market_id;
+// 14 bytes
+struct ItchOrderDelete {
+   uint16_t stock_code;
    uint64_t timestamp;
    uint32_t order_id;
 } __attribute__((packed));
 
-struct OrderReplace {
-   uint16_t market_id;
+// 26 bytes
+struct ItchOrderReplace {
+   uint16_t stock_code;
    uint64_t timestamp;
    uint32_t orig_order_id;
    uint32_t new_order_id;

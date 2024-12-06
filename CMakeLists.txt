@@ -34,5 +34,6 @@ add_compile_options(
 )
 
 add_subdirectory(microbenchmark)
+add_subdirectory(perf_test)
 add_subdirectory(src)
 add_subdirectory(test)
