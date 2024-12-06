@@ -1,0 +1,36 @@
+cancel order
+------------
+* find orig order
+* link previous order to next order
+* find price level (update order count & quantity)
+* if price was best price and price level is now empty then update best price
+
+new order
+---------
+BUY
+is price lower than the best offer?
+if so, then add, else trade.
+
+SELL
+is price higher than the best bid?
+if so, then add, else trade.
+
+update order
+------------
+* find orig order
+* if price is unchanged then update order quantity
+  * find price level (update order count & quantity)
+* else if price changed then cancel order and add new order
+
+add
+---
+* find price level
+* update order count
+* update quantity
+* append order to tail
+* if price is better than best price then update best price
+
+trade
+-----
+for price = best price -> order price:
+  walk from head to tail, removing/updating orders until order quantity = 0
