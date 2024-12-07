@@ -7,43 +7,97 @@
 
 namespace nostromo::order_book::order_book_1 {
 class OrderBook {
-   const int32_t price_divisor_;
-   const int32_t price_offset_;
+   const uint32_t price_divisor_;
+   const uint32_t price_offset_;
 
-   std::array<PriceLevel, MAX_PRICE_LEVELS> price_levels_{};
-   std::array<Order, MAX_ORDERS> orders_{};
-   int32_t best_bid_{0};
-   int32_t best_ask_{MAX_PRICE_LEVELS - 1};
+   PriceLevel bid_levels_[MAX_PRICE_LEVELS]{};
+   PriceLevel ask_levels_[MAX_PRICE_LEVELS]{};
+   Order orders_[MAX_ORDERS]{};
+
+   uint32_t best_bid_{0};
+   uint32_t best_ask_{MAX_PRICE_LEVELS - 1};
+
    uint32_t bid_count_{0};
    uint32_t ask_count_{0};
 
 public:
    OrderBook(
-      const int32_t price_divisor,
-      const int32_t price_offset)
+      const uint32_t price_divisor,
+      const uint32_t price_offset)
       : price_divisor_(price_divisor),
         price_offset_(price_offset) {
    }
 
-   void HandleNewOrder(const NewOrder &new_order) {
-      const auto price_idx = new_order.price / price_divisor_ - price_offset_;
+   PriceLevel *priceLevel(const uint32_t bid, const uint32_t price_idx) {
+      return bid ? &bid_levels_[price_idx] : &ask_levels_[price_idx];
+   }
 
-      if (new_order.bid) {
-         if (price_idx < best_ask_) {
-            AddNewOrderImpl(new_order, price_idx, new_order.quantity);
+   void OrderAdd(const ItchOrderAdd &itch_order) {
+      const auto price_idx = itch_order.price / price_divisor_ - price_offset_;
+
+      const auto order = &orders_[itch_order.order_id];
+      order->timestamp = itch_order.timestamp;
+      order->order_id = itch_order.order_id;
+      order->quantity = itch_order.quantity;
+      order->price_idx = price_idx;
+
+      const auto price_level = priceLevel(itch_order.bid, price_idx);
+
+      if (price_level->order_count == 0) {
+         price_level->head_order_idx = order->order_id;
+
+         // do we have a new best price?
+         if (itch_order.bid && itch_order.price > best_bid_) {
+            best_bid_ = itch_order.price;
          }
-         else {
-            HandleBidTrade(new_order, price_idx);
+         else if (!itch_order.bid && itch_order.price < best_ask_) {
+            best_ask_ = itch_order.price;
          }
       }
       else {
-         if (price_idx > best_bid_) {
-            AddNewOrderImpl(new_order, price_idx, new_order.quantity);
-         }
-         else {
-            HandleAskTrade(new_order, price_idx);
-         }
+         order->prev_idx - price_level->tail_order_idx;
+         const auto tail_order = &orders_[price_level->tail_order_idx];
+         tail_order->next_idx = order->order_id;
       }
+
+      price_level->tail_order_idx = order->order_id;
+      ++price_level->order_count;
+      price_level->quantity += order->quantity;
+
+      if (order->bid) ++bid_count_;
+      else ++ask_count_;
+   }
+
+   void OrderExecuted(const ItchOrderExecuted &order) {
+
+   }
+
+   void OrderExecutedPrice(const ItchOrderExecutedPrice &order) {
+
+   }
+
+   void OrderCancel(const ItchOrderCancel &order) {
+
+   }
+
+   void OrderDelete(const ItchOrderDelete &itch_order) {
+      const auto order = &orders_[itch_order.order_id];
+      const auto price_level = priceLevel(order->bid, order->price_idx);
+
+      --price_level->order_count;
+      price_level->quantity -= order->quantity;
+
+      if (order->bid) --bid_count_;
+      else --ask_count_;
+
+      if (price_level->order_count == 0) {
+
+      }
+
+   }
+
+   void OrderReplace(const ItchOrderReplace &order) {
+
    }
 
    void HandleCancelOrder(const CancelOrder &cancel_order) {
@@ -122,50 +176,6 @@ public:
    }
 
 private:
-   void AddNewOrderImpl(
-      const NewOrder &new_order,
-      const int32_t price_idx,
-      const uint32_t quantity) {
-      const auto price_level = &price_levels_[price_idx];
-      const auto order = &orders_[new_order.order_id];
-      order->order_id = new_order.order_id;
-      order->timestamp = new_order.timestamp;
-      order->quantity = quantity;
-      order->next_idx = new_order.order_id;
-      order->price_idx = price_idx;
-
-      if (new_order.bid) {
-         ++bid_count_;
-      }
-      else {
-         ++ask_count_;
-      }
-
-      // will this be the only order at this price level?
-      if (price_level->order_count == 0) {
-         order->prev_idx = order->order_id;
-         price_level->head_order_idx = order->order_id;
-
-         // do we have a new best price?
-         if (new_order.bid && price_idx > best_bid_) {
-            best_bid_ = price_idx;
-         }
-         else if (!new_order.bid && price_idx < best_ask_) {
-            best_ask_ = price_idx;
-         }
-      }
-      // else there are other orders at this price level.
-      else {
-         order->prev_idx = price_level->tail_order_idx;
-         const auto tail_order = &orders_[price_level->tail_order_idx];
-         tail_order->next_idx = order->order_id;
-      }
-
-      price_level->tail_order_idx = order->order_id;
-      ++price_level->order_count;
-      price_level->quantity += quantity;
-   }
-
    void HandleBidTrade(const NewOrder &new_order, const int32_t price_idx) {
       auto quantity = new_order.quantity;
 
