@@ -28,39 +28,42 @@ public:
         price_offset_(price_offset) {
    }
 
-   PriceLevel *PriceLevel(
+   PriceLevel *priceLevel(
       const uint32_t bid,
       const uint32_t price_idx) {
       return bid ? &bid_levels_[price_idx] : &ask_levels_[price_idx];
    }
 
-   [[nodiscard]] uint32_t PriceIdx(const uint32_t price) const {
+   [[nodiscard]] uint32_t priceIdx(const uint32_t price) const {
       return price / price_divisor_ - price_offset_;
    }
 
    void OrderAdd(const ItchOrderAdd &itch_order) {
-      const auto price_idx = PriceIdx(itch_order.price);
+      const auto price_idx = priceIdx(itch_order.price);
 
       const auto order = &orders_[itch_order.order_id];
       order->timestamp = itch_order.timestamp;
       order->order_id = itch_order.order_id;
       order->quantity = itch_order.quantity;
       order->price_idx = price_idx;
+      order->bid = itch_order.bid;
 
-      const auto price_level = PriceLevel(itch_order.bid, price_idx);
+      const auto price_level = priceLevel(order->bid, price_idx);
 
       if (price_level->order_count == 0) {
          price_level->head_order_idx = order->order_id;
       }
       else {
-         order->prev_idx - price_level->tail_order_idx;
+         order->prev_idx = price_level->tail_order_idx;
          const auto tail_order = &orders_[price_level->tail_order_idx];
          tail_order->next_idx = order->order_id;
       }
 
+      price_level->price = itch_order.price;
       price_level->tail_order_idx = order->order_id;
-      ++price_level->order_count;
       price_level->quantity += order->quantity;
+      ++price_level->order_count;
+      price_level->bid += order->bid;
 
       if (order->bid) {
          if (itch_order.price > best_bid_) best_bid_ = itch_order.price;
@@ -72,21 +75,18 @@ public:
       }
    }
 
-   void OrderExecuted(const ItchOrderExecuted &order) {
+   // void OrderExecuted(const ItchOrderExecuted &order) {
+   // }
 
-   }
+   // void OrderExecutedPrice(const ItchOrderExecutedPrice &order) {
+   // }
 
-   void OrderExecutedPrice(const ItchOrderExecutedPrice &order) {
-
-   }
-
-   void OrderCancel(const ItchOrderCancel &order) {
-
-   }
+   // void OrderCancel(const ItchOrderCancel &order) {
+   // }
 
    void OrderDelete(const ItchOrderDelete &itch_order) {
       const auto order = &orders_[itch_order.order_id];
-      const auto price_level = PriceLevel(order->bid, order->price_idx);
+      const auto price_level = priceLevel(order->bid, order->price_idx);
 
       --price_level->order_count;
       price_level->quantity -= order->quantity;
@@ -113,8 +113,8 @@ public:
 
             auto price_idx = order->price_idx - 1;
             while (true) {
-               const auto pl = PriceLevel(order->bid, price_idx);
-               if (pl->order_count > 0) {
+               if (const auto pl = priceLevel(order->bid, price_idx);
+                  pl->order_count > 0) {
                   best_bid_ = pl->price;
                   return;
                }
@@ -141,8 +141,8 @@ public:
 
          auto price_idx = order->price_idx + 1;
          while (true) {
-            const auto pl = PriceLevel(order->bid, price_idx);
-            if (pl->order_count > 0) {
+            if (const auto pl = priceLevel(order->bid, price_idx);
+               pl->order_count > 0) {
                best_ask_ = pl->price;
                return;
             }
@@ -176,9 +176,8 @@ public:
       }
    }
 
-   void OrderReplace(const ItchOrderReplace &order) {
-
-   }
+   // void OrderReplace(const ItchOrderReplace &order) {
+   // }
 
    [[nodiscard]] uint32_t BestBid() const {
       return best_bid_;
