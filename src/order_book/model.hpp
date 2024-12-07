@@ -30,18 +30,6 @@ struct Order {
    uint32_t bid;
 };
 
-struct NewOrder {
-   int32_t price;
-   uint32_t order_id;
-   uint32_t timestamp;
-   uint32_t quantity;
-   bool bid;
-};
-
-struct CancelOrder {
-   uint32_t order_id;
-};
-
 // 23 bytes
 struct ItchOrderAdd {
    uint16_t stock_code;

@@ -95,7 +95,8 @@ public:
       else --ask_count_;
 
       if (price_level->order_count == 0) {
-         // this price level is now empty. we may need a new best price.
+         // this price level is now empty.
+         // do we need a new best bid?
          if (order->bid) {
             if (price_level->price != best_bid_) {
                return;
@@ -124,6 +125,7 @@ public:
             }
          }
 
+         // do we need a new best ask?
          if (price_level->price != best_ask_) {
             return;
          }
@@ -151,18 +153,18 @@ public:
          }
       }
 
+      // else price_level->order_count > 0
+
       // was it the head order?
       if (price_level->head_order_idx == order->order_id) {
          // make the next order the new head order.
          const auto next_order = &orders_[order->next_idx];
-         next_order->prev_idx = next_order->order_id;
          price_level->head_order_idx = next_order->order_id;
       }
       // else was it the tail order?
       else if (price_level->tail_order_idx == order->order_id) {
          // make the prev order the new tail order.
          const auto prev_order = &orders_[order->prev_idx];
-         prev_order->next_idx = prev_order->order_id;
          price_level->tail_order_idx = prev_order->order_id;
       }
       // otherwise it was somewhere in the middle.
