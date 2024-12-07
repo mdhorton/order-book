@@ -3,8 +3,11 @@
 #include <cstdint>
 
 namespace nostromo::order_book {
-constexpr int32_t MAX_PRICE_LEVELS = 10'000;
-constexpr int32_t MAX_ORDERS = 100'000;
+constexpr uint32_t MAX_PRICE = 2'000'000'000;
+constexpr uint32_t MAX_PRICE_LEVELS = 10'000;
+constexpr uint32_t MAX_PRICE_IDX = MAX_PRICE_LEVELS - 1;
+constexpr uint32_t MAX_ORDERS = 100'000;
+constexpr uint32_t MAX_ORDER_IDX = MAX_ORDERS - 1;
 
 // 24 bytes
 struct PriceLevel {
