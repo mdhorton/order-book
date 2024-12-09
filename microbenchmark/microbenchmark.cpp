@@ -1,9 +1,9 @@
 #include <benchmark/benchmark.h>
 
-#include "order_book_1/order_book.hpp"
+#include "itch_1/order_book.hpp"
 
-namespace nostromo::order_book::order_book_1 {
-static void BM_order_book_1_bid_add_delete(benchmark::State &state) {
+namespace order_book::itch_1 {
+static void BM_itch_1_bid_add_delete(benchmark::State &state) {
    const auto base_price = std::rand() % 100'000 + 300'000;
    const auto base_order_id = std::rand() % 1000;
    constexpr auto price_mask = (1 << 17) - 1; // 128k
@@ -24,6 +24,9 @@ static void BM_order_book_1_bid_add_delete(benchmark::State &state) {
    benchmark::DoNotOptimize(book.BestBid());
 }
 
+BENCHMARK(BM_itch_1_bid_add_delete);
+} // order_book::itch_1
+
 static void BM_div_32(benchmark::State &state) {
    int32_t p1 = std::rand();
    int32_t r1 = 0;
@@ -38,6 +41,4 @@ static void BM_div_32(benchmark::State &state) {
    benchmark::DoNotOptimize(r1);
 }
 
-BENCHMARK(BM_order_book_1_bid_add_delete);
 BENCHMARK(BM_div_32);
-} // nostromo::order_book::order_book_1

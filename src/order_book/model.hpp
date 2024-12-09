@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace nostromo::order_book {
+namespace order_book {
 constexpr uint32_t MAX_PRICE = 2'000'000'000;
 constexpr uint32_t MAX_PRICE_LEVELS = 10'000;
 constexpr uint32_t MAX_PRICE_IDX = MAX_PRICE_LEVELS - 1;
@@ -82,4 +82,4 @@ struct ItchOrderReplace {
    uint32_t quantity;
    uint32_t price;
 } __attribute__((packed));
-} // nostromo::order_book
+} // order_book
