@@ -7,61 +7,84 @@
 #include <cstdio>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
+#include <chrono>
 
-#include <itch_1/order_book.hpp>
+#include <boost/unordered/unordered_flat_map.hpp>
 
-void bar(
-   std::unordered_map<uint16_t, std::pair<uint32_t, uint32_t> > &map,
-   const uint16_t stock_code,
-   const uint32_t price) {
-   if (const auto val = map.find(stock_code); val == map.end()) {
-      map[stock_code] = std::make_pair(price, price);
+#include <itch_01/order_book.hpp>
+
+struct Counts {
+   uint32_t order_count{};
+   boost::unordered_flat_map<uint32_t, uint32_t> price_counts{};
+};
+
+void update_hilo(
+      boost::unordered_flat_map<uint16_t, Counts> &map,
+      const uint16_t stock_code,
+      const uint32_t price) {
+   if (const auto stock_val = map.find(stock_code); stock_val == map.end()) {
+      map[stock_code] = Counts{.order_count=1};
    }
    else {
-      if (price > val->second.first) val->second.first = price;
-      if (price < val->second.second) val->second.second = price;
+      auto &counts = stock_val->second;
+      ++counts.order_count;
+
+      if (price > 0) {
+         auto &price_counts = counts.price_counts;
+         if (const auto price_val = price_counts.find(price); price_val == price_counts.end()) {
+            price_counts[price] = 1;
+         }
+         else {
+            ++price_val->second;
+         }
+      }
    }
 }
 
-auto foo(void *data, const uint64_t fsize) {
-   std::unordered_map<uint16_t, std::pair<uint32_t, uint32_t> > map{};
-   const auto ptr = static_cast<char *>(data);
+auto hilo_prices(unsigned char *ptr, const uint64_t fsize) {
+   boost::unordered_flat_map<uint16_t, Counts> map{};
    uint64_t offset = 0;
 
    while (offset < fsize) {
       switch (ptr[offset++]) {
          case 'A':
          case 'F': {
-            const auto order = *reinterpret_cast<order_book::ItchOrderAdd *>(ptr[offset]);
-            bar(map, order.stock_code, order.price);
+            const auto order = reinterpret_cast<order_book::ItchOrderAdd *>(&ptr[offset]);
+            update_hilo(map, order->stock_code, order->price);
             offset += 23;
             break;
          }
          case 'E':
+         case 'C': {
+            const auto order = reinterpret_cast<order_book::ItchOrderExecuted *>(&ptr[offset]);
+            update_hilo(map, order->stock_code, 0);
             offset += 18;
             break;
-         case 'C':
-            offset += 23;
-            break;
-         case 'X':
+         }
+         case 'X': {
+            const auto order = reinterpret_cast<order_book::ItchOrderCancel *>(&ptr[offset]);
+            update_hilo(map, order->stock_code, 0);
             offset += 18;
             break;
-         case 'D':
+         }
+         case 'D': {
+            const auto order = reinterpret_cast<order_book::ItchOrderDelete *>(&ptr[offset]);
+            update_hilo(map, order->stock_code, 0);
             offset += 14;
             break;
+         }
          case 'U': {
-            const auto order = *reinterpret_cast<order_book::ItchOrderReplace *>(ptr[offset]);
-            bar(map, order.stock_code, order.price);
+            const auto order = reinterpret_cast<order_book::ItchOrderReplace *>(&ptr[offset]);
+            update_hilo(map, order->stock_code, order->price);
             offset += 26;
             break;
          }
          default:
-            throw std::runtime_error("unexpected msg_type at offset: " + std::to_string(offset));
+            throw std::runtime_error("unexpected msg_type at offset: " + std::to_string(offset - 1));
       }
-
-      return map;
    }
+
+   return map;
 }
 
 int main() {
@@ -93,44 +116,64 @@ int main() {
       return -1;
    }
 
+   const auto ptr = static_cast<unsigned char *>(data);
+   using Clock = std::conditional<
+         std::chrono::high_resolution_clock::is_steady,
+         std::chrono::high_resolution_clock,
+         std::chrono::steady_clock>::type;
+
+   auto start = Clock::now();
+   auto map = hilo_prices(ptr, fsize);
+   auto stop = Clock::now();
+   auto diff = stop - start;
+
+   for (auto &[key, val]: map) {
+      printf("stock: %d -> count: %d (", key, val.order_count);
+      for (auto &[k, v]: val.price_counts) {
+         printf("%d -> %d  ", k, v);
+      }
+      printf(")\n");
+   }
+
+   printf("stocks: %zu\n", map.size());
+   printf("elapsed: %zu\n", diff.count());
+//  printf("%zu\n", diff.count() / total);
+
    // divisor 1 if high < 10000 else 100
    // offset = low / divisor
-   order_book::itch_1::OrderBook book{100, 2500};
+//  order_book::itch_01::OrderBook book{100, 2500};
+//
+//  uint64_t offset = 0;
 
-   const auto ptr = static_cast<char *>(data);
-   uint64_t offset = 0;
-
-   while (offset < fsize) {
-      switch (ptr[offset++]) {
-         case 'A':
-         case 'F':
-            // book.OrderAdd(*reinterpret_cast<order_book::ItchOrderAdd *>(ptr[offset]));
-            offset += 23;
-            break;
-         case 'E':
-            // book.OrderExecuted(*reinterpret_cast<order_book::ItchOrderExecuted *>(ptr[offset]));
-            offset += 18;
-            break;
-         case 'C':
-            // book.OrderExecutedPrice(*reinterpret_cast<order_book::ItchOrderExecutedPrice *>(ptr[offset]));
-            offset += 23;
-            break;
-         case 'X':
-            // book.OrderCancel(*reinterpret_cast<order_book::ItchOrderCancel *>(ptr[offset]));
-            offset += 18;
-            break;
-         case 'D':
-            // book.OrderDelete(*reinterpret_cast<order_book::ItchOrderDelete *>(ptr[offset]));
-            offset += 14;
-            break;
-         case 'U':
-            // book.OrderReplace(*reinterpret_cast<order_book::ItchOrderReplace *>(ptr[offset]));
-            offset += 26;
-            break;
-         default:
-            throw std::runtime_error("unexpected msg_type at offset: " + std::to_string(offset));
-      }
-   }
+//  while (offset < fsize) {
+//    switch (ptr[offset++]) {
+//      case 'A':
+//      case 'F': {
+//        book.OrderAdd(reinterpret_cast<order_book::ItchOrderAdd *>(&ptr[offset]));
+//        offset += 23;
+//        break;
+//      }
+//      case 'E':
+//      case 'C':
+//        // book.OrderExecuted(*reinterpret_cast<order_book::ItchOrderExecuted *>(ptr[offset]));
+//        offset += 18;
+//        break;
+//      case 'X':
+//        // book.OrderCancel(*reinterpret_cast<order_book::ItchOrderCancel *>(ptr[offset]));
+//        offset += 18;
+//        break;
+//      case 'D':
+//        // book.OrderDelete(*reinterpret_cast<order_book::ItchOrderDelete *>(ptr[offset]));
+//        offset += 14;
+//        break;
+//      case 'U':
+//        // book.OrderReplace(*reinterpret_cast<order_book::ItchOrderReplace *>(ptr[offset]));
+//        offset += 26;
+//        break;
+//      default:
+//        throw std::runtime_error("unexpected msg_type at offset: " + std::to_string(offset - 1));
+//    }
+//  }
 
    ::munmap(data, fsize);
    ::close(fd);

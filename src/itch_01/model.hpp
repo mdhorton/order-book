@@ -48,16 +48,6 @@ struct ItchOrderExecuted {
    uint32_t quantity;
 } __attribute__((packed));
 
-// 23 bytes
-struct ItchOrderExecutedPrice {
-   uint16_t stock_code;
-   uint64_t timestamp;
-   uint32_t order_id;
-   uint32_t quantity;
-   uint8_t printable;
-   uint32_t price;
-} __attribute__((packed));
-
 // 18 bytes
 struct ItchOrderCancel {
    uint16_t stock_code;

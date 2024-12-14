@@ -1,6 +1,7 @@
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
-add_executable(perf_test
+add_executable(
+        perf_test
         perf_test.cpp
 )
 

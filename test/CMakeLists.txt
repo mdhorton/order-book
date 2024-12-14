@@ -1,5 +1,4 @@
-set(CMAKE_PREFIX_PATH /remote/googletest/googletest-1.15.2/install)
-find_package(GTest REQUIRED)
+find_package(GTest REQUIRED PATHS /remote/googletest/current/install)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
@@ -12,6 +11,7 @@ add_executable(
 
 target_link_libraries(
         test
+        PUBLIC
         GTest::gtest_main
 )
 

@@ -8,9 +8,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -fno-rtti")
+SET(CMAKE_CXX_FLAGS "-fno-rtti -march=native")
+SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer")
+SET(CMAKE_CXX_FLAGS_RELEASE "-O3")
+SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -fno-omit-frame-pointer -fsanitize=address")
 
 # https://github.com/abseil/abseil-cpp/blob/master/absl/copts/copts.py
 add_compile_options(
@@ -33,7 +34,11 @@ add_compile_options(
         -Wsign-compare
 )
 
-add_subdirectory(microbenchmark)
-add_subdirectory(perf_test)
+# eliminate boost -Wundef warnings.
+add_compile_definitions(BOOST_LIBSTDCXX_VERSION_WORKAROUND_GUARD=0)
+include_directories(/remote/boost/current/install/include)
+
+#add_subdirectory(microbenchmark)
+#add_subdirectory(perf_test)
 add_subdirectory(src)
 add_subdirectory(test)

@@ -1,9 +1,9 @@
-set(CMAKE_PREFIX_PATH /remote/googlebenchmark/current/build)
-find_package(benchmark REQUIRED)
+find_package(benchmark REQUIRED PATHS /remote/googlebenchmark/current/build)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
-add_executable(microbenchmark
+add_executable(
+        microbenchmark
         microbenchmark.cpp
 )
 

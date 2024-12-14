@@ -13,7 +13,7 @@ class ItchParser:
         counts = {k: 0 for k in mtypes.keys()}
         total_bytes = 0
 
-        base_path = '/remote/data/nasdaq-itch/12302019.NASDAQ_ITCH50'
+        base_path = '/data/nasdaq-itch/12302019.NASDAQ_ITCH50'
 
         with gzip.open(f'{base_path}.gz', 'rb') as infile:
             with open(f'{base_path}.csv', 'w', newline='') as csvfile:
@@ -42,7 +42,7 @@ class ItchParser:
         print(f'max_order_id: {self.max_order_id}')
 
     def _handle_msg_type_A(self, msg):
-        msg = struct.unpack('!HH6sQcL8sL', msg)
+        msg = struct.unpack('>HH6sQcL8sL', msg)
         msg = list(msg)
         if len(msg) != 8:
             raise Exception('bad record')
@@ -55,11 +55,11 @@ class ItchParser:
         if order_id > self.max_order_id:
             self.max_order_id = order_id
         row = b'A', market_id, tstamp, order_id, bid, qty, price
-        packed = struct.pack('>cHQL?LL', *row)
+        packed = struct.pack('<cHQL?LL', *row)
         return row, packed
 
     def _handle_msg_type_F(self, msg):
-        msg = struct.unpack('!HH6sQcL8sL4s', msg)
+        msg = struct.unpack('>HH6sQcL8sL4s', msg)
         msg = list(msg)
         if len(msg) != 9:
             raise Exception('bad record')
@@ -70,11 +70,11 @@ class ItchParser:
         qty = msg[5]
         price = msg[7]
         row = b'F', market_id, tstamp, order_id, bid, qty, price
-        packed = struct.pack('>cHQL?LL', *row)
+        packed = struct.pack('<cHQL?LL', *row)
         return row, packed
 
     def _handle_msg_type_E(self, msg):
-        msg = struct.unpack('!HH6sQLQ', msg)
+        msg = struct.unpack('>HH6sQLQ', msg)
         msg = list(msg)
         if len(msg) != 6:
             raise Exception('bad record')
@@ -83,11 +83,11 @@ class ItchParser:
         order_id = msg[3]
         qty = msg[4]
         row = b'E', market_id, tstamp, order_id, qty
-        packed = struct.pack('>cHQLL', *row)
+        packed = struct.pack('<cHQLL', *row)
         return row, packed
 
     def _handle_msg_type_C(self, msg):
-        msg = struct.unpack('!HH6sQLQcL', msg)
+        msg = struct.unpack('>HH6sQLQcL', msg)
         msg = list(msg)
         if len(msg) != 8:
             raise Exception('bad record')
@@ -97,12 +97,12 @@ class ItchParser:
         qty = msg[4]
         printable = msg[6] == b'Y'
         price = msg[7]
-        row = b'C', market_id, tstamp, order_id, qty, printable, price
-        packed = struct.pack('>cHQLL?L', *row)
+        row = b'C', market_id, tstamp, order_id, qty
+        packed = struct.pack('<cHQLL', *row)
         return row, packed
 
     def _handle_msg_type_X(self, msg):
-        msg = struct.unpack('!HH6sQL', msg)
+        msg = struct.unpack('>HH6sQL', msg)
         msg = list(msg)
         if len(msg) != 5:
             raise Exception('bad record')
@@ -111,11 +111,11 @@ class ItchParser:
         order_id = msg[3]
         qty = msg[4]
         row = b'X', market_id, tstamp, order_id, qty
-        packed = struct.pack('>cHQLL', *row)
+        packed = struct.pack('<cHQLL', *row)
         return row, packed
 
     def _handle_msg_type_D(self, msg):
-        msg = struct.unpack('!HH6sQ', msg)
+        msg = struct.unpack('>HH6sQ', msg)
         msg = list(msg)
         if len(msg) != 4:
             raise Exception('bad record')
@@ -123,11 +123,11 @@ class ItchParser:
         tstamp = self._parse_timestamp(msg[2])
         order_id = msg[3]
         row = b'D', market_id, tstamp, order_id
-        packed = struct.pack('>cHQL', *row)
+        packed = struct.pack('<cHQL', *row)
         return row, packed
 
     def _handle_msg_type_U(self, msg):
-        msg = struct.unpack('!HH6sQQLL', msg)
+        msg = struct.unpack('>HH6sQQLL', msg)
         msg = list(msg)
         if len(msg) != 7:
             raise Exception('bad record')
@@ -138,7 +138,7 @@ class ItchParser:
         qty = msg[5]
         price = msg[6]
         row = b'U', market_id, tstamp, orig_order_id, new_order_id, qty, price
-        packed = struct.pack('>cHQLLLL', *row)
+        packed = struct.pack('<cHQLLLL', *row)
         return row, packed
 
     def _parse_timestamp(self, tstamp):
