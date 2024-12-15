@@ -1,182 +1,93 @@
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-
 #include <cstdint>
 #include <cstdio>
 #include <stdexcept>
 #include <string>
 #include <chrono>
+#include <map>
 
 #include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
 
-#include <itch_01/order_book.hpp>
+#include "nostromo/mmap.hpp"
+#include "nostromo/time_utils.hpp"
 
-struct Counts {
-   uint32_t order_count{};
-   boost::unordered_flat_map<uint32_t, uint32_t> price_counts{};
+#include "itch/itch.hpp"
+#include "itch/v02/order_book.hpp"
+
+namespace order_book::itch::v02::perf_test {
+
+class PerfTest {
+public:
+   static auto CreateMetaData(
+         unsigned char *data,
+         const uint64_t fsize) {
+      // stock_code -> set<price>
+      MAP<uint16_t, SET<uint32_t>> stock_prices;
+      uint32_t max_order_id = 0;
+      uint64_t offset = 0;
+
+      while (offset < fsize) {
+         auto msg_type = data[offset++];
+
+         switch (msg_type) {
+            case 'A':
+            case 'F': {
+               auto order = (ItchOrderAdd *) &data[offset];
+               if (order->order_id > max_order_id) max_order_id = order->order_id;
+               stock_prices[order->stock_code].insert(order->price);
+               offset += 23;
+               break;
+            }
+            case 'E':
+            case 'C':
+            case 'X':
+               offset += 18;
+               break;
+            case 'D':
+               offset += 14;
+               break;
+            case 'U': {
+               auto order = (ItchOrderReplace *) &data[offset];
+               if (order->new_order_id > max_order_id) max_order_id = order->new_order_id;
+               stock_prices[order->stock_code].insert(order->price);
+               offset += 26;
+               break;
+            }
+            default:
+               throw std::runtime_error("unexpected msg_type at offset: " + std::to_string(offset - 1));
+         }
+      }
+
+      return std::make_pair(max_order_id, stock_prices);
+   }
 };
 
-void update_hilo(
-      boost::unordered_flat_map<uint16_t, Counts> &map,
-      const uint16_t stock_code,
-      const uint32_t price) {
-   if (const auto stock_val = map.find(stock_code); stock_val == map.end()) {
-      map[stock_code] = Counts{.order_count=1};
-   }
-   else {
-      auto &counts = stock_val->second;
-      ++counts.order_count;
+} // namespace order_book::itch::v02::perf_test
 
-      if (price > 0) {
-         auto &price_counts = counts.price_counts;
-         if (const auto price_val = price_counts.find(price); price_val == price_counts.end()) {
-            price_counts[price] = 1;
-         }
-         else {
-            ++price_val->second;
-         }
-      }
-   }
-}
+auto count_orders(
+      unsigned char *data,
+      const uint64_t fsize) {
 
-auto hilo_prices(unsigned char *ptr, const uint64_t fsize) {
-   boost::unordered_flat_map<uint16_t, Counts> map{};
-   uint64_t offset = 0;
-
-   while (offset < fsize) {
-      switch (ptr[offset++]) {
-         case 'A':
-         case 'F': {
-            const auto order = reinterpret_cast<order_book::ItchOrderAdd *>(&ptr[offset]);
-            update_hilo(map, order->stock_code, order->price);
-            offset += 23;
-            break;
-         }
-         case 'E':
-         case 'C': {
-            const auto order = reinterpret_cast<order_book::ItchOrderExecuted *>(&ptr[offset]);
-            update_hilo(map, order->stock_code, 0);
-            offset += 18;
-            break;
-         }
-         case 'X': {
-            const auto order = reinterpret_cast<order_book::ItchOrderCancel *>(&ptr[offset]);
-            update_hilo(map, order->stock_code, 0);
-            offset += 18;
-            break;
-         }
-         case 'D': {
-            const auto order = reinterpret_cast<order_book::ItchOrderDelete *>(&ptr[offset]);
-            update_hilo(map, order->stock_code, 0);
-            offset += 14;
-            break;
-         }
-         case 'U': {
-            const auto order = reinterpret_cast<order_book::ItchOrderReplace *>(&ptr[offset]);
-            update_hilo(map, order->stock_code, order->price);
-            offset += 26;
-            break;
-         }
-         default:
-            throw std::runtime_error("unexpected msg_type at offset: " + std::to_string(offset - 1));
-      }
-   }
-
-   return map;
 }
 
 int main() {
+   using order_book::itch::v02::perf_test::PerfTest;
+
    const std::string base_dir = "/remote/data/nasdaq-itch/";
-   const std::string data_file = base_dir + "12302019.NASDAQ_ITCH50.bin";
+   const std::string fpath = base_dir + "01302020.NASDAQ_ITCH50.bin";
+//   const std::string fpath = base_dir + "12302019.NASDAQ_ITCH50.bin";
 
-   errno = 0;
-   const auto fd = ::open(data_file.c_str(), O_RDONLY);
-   if (fd == -1) {
-      printf("open() failed: %d\n", errno);
-      return -1;
-   }
+   nostromo::Mmap<unsigned char> mmap{fpath};
+   auto data = mmap.Ptr();
+   auto fsize = mmap.Size();
 
-   struct stat st{};
+   auto start = nostromo::TimeUtils::Now();
+   auto [max_order_id, stock_prices] = PerfTest::CreateMetaData(data, fsize);
+   auto stop = nostromo::TimeUtils::Now();
+   auto elap = stop - start;
 
-   errno = 0;
-   if (::fstat(fd, &st) == -1) {
-      printf("fstat() failed: %d\n", errno);
-      return -1;
-   }
-
-   const auto fsize = st.st_size;
-   constexpr int flags = MAP_PRIVATE | MAP_POPULATE;
-
-   errno = 0;
-   const auto data = ::mmap(nullptr, fsize, PROT_READ, flags, fd, 0);
-   if (data == MAP_FAILED) {
-      printf("mmap() failed: %d\n", errno);
-      return -1;
-   }
-
-   const auto ptr = static_cast<unsigned char *>(data);
-   using Clock = std::conditional<
-         std::chrono::high_resolution_clock::is_steady,
-         std::chrono::high_resolution_clock,
-         std::chrono::steady_clock>::type;
-
-   auto start = Clock::now();
-   auto map = hilo_prices(ptr, fsize);
-   auto stop = Clock::now();
-   auto diff = stop - start;
-
-   for (auto &[key, val]: map) {
-      printf("stock: %d -> count: %d (", key, val.order_count);
-      for (auto &[k, v]: val.price_counts) {
-         printf("%d -> %d  ", k, v);
-      }
-      printf(")\n");
-   }
-
-   printf("stocks: %zu\n", map.size());
-   printf("elapsed: %zu\n", diff.count());
-//  printf("%zu\n", diff.count() / total);
-
-   // divisor 1 if high < 10000 else 100
-   // offset = low / divisor
-//  order_book::itch_01::OrderBook book{100, 2500};
-//
-//  uint64_t offset = 0;
-
-//  while (offset < fsize) {
-//    switch (ptr[offset++]) {
-//      case 'A':
-//      case 'F': {
-//        book.OrderAdd(reinterpret_cast<order_book::ItchOrderAdd *>(&ptr[offset]));
-//        offset += 23;
-//        break;
-//      }
-//      case 'E':
-//      case 'C':
-//        // book.OrderExecuted(*reinterpret_cast<order_book::ItchOrderExecuted *>(ptr[offset]));
-//        offset += 18;
-//        break;
-//      case 'X':
-//        // book.OrderCancel(*reinterpret_cast<order_book::ItchOrderCancel *>(ptr[offset]));
-//        offset += 18;
-//        break;
-//      case 'D':
-//        // book.OrderDelete(*reinterpret_cast<order_book::ItchOrderDelete *>(ptr[offset]));
-//        offset += 14;
-//        break;
-//      case 'U':
-//        // book.OrderReplace(*reinterpret_cast<order_book::ItchOrderReplace *>(ptr[offset]));
-//        offset += 26;
-//        break;
-//      default:
-//        throw std::runtime_error("unexpected msg_type at offset: " + std::to_string(offset - 1));
-//    }
-//  }
-
-   ::munmap(data, fsize);
-   ::close(fd);
+   printf("max order id: %u\n", max_order_id);
+   printf("elapsed: %zu\n", elap.count());
 
    return 0;
 }

@@ -3,15 +3,18 @@
 
 #include <cstdint>
 #include <cassert>
+#include <map>
 #include <set>
 
 #include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
 
 #include "common.hpp"
 #include "itch/itch.hpp"
 #include "itch/v02/model.hpp"
 
 #define MAP boost::unordered_flat_map
+#define SET boost::unordered_flat_set
 
 namespace order_book::itch::v02 {
 
@@ -313,28 +316,22 @@ class OrderBooks {
 
    OrderBooks(
          const uint32_t max_order_id,
-         const std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> &prices) {
+         const std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> &stock_prices) {
       orders_.reserve(max_order_id + 1);
+
       for (uint32_t x = 0; x <= max_order_id; ++x) {
          orders_.emplace_back();
       }
 
-      const std::set<uint32_t> empty_prices{};
+      const uint16_t max_stock_id = stock_prices.rbegin()->first;
+      order_books_.reserve(max_stock_id + 1);
 
-      const uint16_t max_stock_id = prices.rbegin()->first;
       for (uint16_t idx = 0; idx <= max_stock_id; ++idx) {
-         if (auto res = prices.find(idx); res != prices.end()) {
-            auto pair = res->second;
-            order_books_.emplace_back(orders_, pair.first, pair.second);
-         }
-         else {
-            order_books_.emplace_back(orders_, empty_prices, empty_prices);
-         }
+         auto res = stock_prices.find(idx);
+         if (res == stock_prices.end()) continue;
+         auto pair = res->second;
+         order_books_.emplace_back(orders_, pair.first, pair.second);
       }
-   }
-
-   void OrderAdd(const ItchOrderAdd &itch_order) {
-      (&order_books_[itch_order.stock_code])->OrderAdd(itch_order);
    }
 };
 
