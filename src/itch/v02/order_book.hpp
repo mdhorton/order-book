@@ -11,6 +11,8 @@
 #include "itch/itch.hpp"
 #include "itch/v02/model.hpp"
 
+#define MAP boost::unordered_flat_map
+
 namespace order_book::itch::v02 {
 
 class OrderBook {
@@ -20,8 +22,8 @@ class OrderBook {
 
    std::vector<PriceLevel> bid_levels_{};
    std::vector<PriceLevel> ask_levels_{};
-   std::map<uint32_t, PriceLevel *> bid_price_map_{};
-   std::map<uint32_t, PriceLevel *> ask_price_map_{};
+   MAP<uint32_t, PriceLevel *> bid_price_map_{};
+   MAP<uint32_t, PriceLevel *> ask_price_map_{};
    uint32_t bid_count_{0};
    uint32_t ask_count_{0};
    uint32_t best_bid_{0};
@@ -40,6 +42,7 @@ public:
       {
          bid_levels_.reserve(bid_prices.size());
          uint16_t idx = 0;
+
          for (auto price: bid_prices) {
             bid_levels_.emplace_back();
             auto tmp = &bid_levels_[idx];
@@ -53,6 +56,7 @@ public:
       {
          ask_levels_.reserve(ask_prices.size());
          uint16_t idx = 0;
+
          for (auto price: ask_prices) {
             ask_levels_.emplace_back();
             auto tmp = &ask_levels_[idx];
@@ -304,8 +308,8 @@ private:
 };
 
 class OrderBooks {
-   std::vector<Order> orders_;
-   std::vector<OrderBook> order_books_;
+   std::vector<Order> orders_{};
+   std::vector<OrderBook> order_books_{};
 
    OrderBooks(
          const uint32_t max_order_id,

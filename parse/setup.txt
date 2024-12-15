@@ -1,4 +1,0 @@
-https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/NQTVITCHSpecification.pdf
-
-micromamba env remove --name order_book
-micromamba env create --file order_book.yml
