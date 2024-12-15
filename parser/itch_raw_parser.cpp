@@ -29,15 +29,19 @@ public:
    static uint64_t ParseFileGzip(const std::string &fpath) {
       namespace io = boost::iostreams;
 
+      // replace .gz with .bin
+      const auto out_path = fpath.substr(0, fpath.length() - 3) + ".bin";
+      std::ofstream out(out_path, std::ios_base::out | std::ios_base::binary);
+
       std::ifstream file(fpath, std::ios_base::in | std::ios_base::binary);
       io::filtering_istream in;
       in.push(io::gzip_decompressor());
       in.push(file);
 
       char msg_type;
-      char msg[64];
+      char msg[64]; // all messages are less than 64 bytes.
 
-      uint64_t orders = 0;
+      uint64_t order_cnt = 0;
 
       while (true) {
          in.read(&msg_type, 1);
@@ -87,7 +91,8 @@ public:
                order.bid = itch->bid == 'B' ? 1 : 0;
                order.quantity = Quantity(itch->quantity);
                order.price = Price(itch->price);
-               ++orders;
+               Write(out, msg_type, &order, sizeof(ItchOrderAdd));
+               ++order_cnt;
                break;
             }
             case 'F': {
@@ -100,7 +105,8 @@ public:
                order.bid = itch->bid == 'B' ? 1 : 0;
                order.quantity = Quantity(itch->quantity);
                order.price = Price(itch->price);
-               ++orders;
+               Write(out, msg_type, &order, sizeof(ItchOrderAdd));
+               ++order_cnt;
                break;
             }
             case 'E': {
@@ -111,7 +117,8 @@ public:
                order.timestamp = Timestamp(itch->timestamp);
                order.order_id = OrderId(itch->order_id);
                order.quantity = Quantity(itch->quantity);
-               ++orders;
+               Write(out, msg_type, &order, sizeof(ItchOrderExecuted));
+               ++order_cnt;
                break;
             }
             case 'C': {
@@ -122,7 +129,8 @@ public:
                order.timestamp = Timestamp(itch->timestamp);
                order.order_id = OrderId(itch->order_id);
                order.quantity = Quantity(itch->quantity);
-               ++orders;
+               Write(out, msg_type, &order, sizeof(ItchOrderExecuted));
+               ++order_cnt;
                break;
             }
             case 'X': {
@@ -133,7 +141,8 @@ public:
                order.timestamp = Timestamp(itch->timestamp);
                order.order_id = OrderId(itch->order_id);
                order.quantity = Quantity(itch->quantity);
-               ++orders;
+               Write(out, msg_type, &order, sizeof(ItchOrderCancel));
+               ++order_cnt;
                break;
             }
             case 'D': {
@@ -143,7 +152,8 @@ public:
                order.stock_code = StockCode(itch->stock_code);
                order.timestamp = Timestamp(itch->timestamp);
                order.order_id = OrderId(itch->order_id);
-               ++orders;
+               Write(out, msg_type, &order, sizeof(ItchOrderDelete));
+               ++order_cnt;
                break;
             }
             case 'U': {
@@ -156,7 +166,8 @@ public:
                order.new_order_id = OrderId(itch->new_order_id);
                order.quantity = Quantity(itch->quantity);
                order.price = Price(itch->price);
-               ++orders;
+               Write(out, msg_type, &order, sizeof(ItchOrderReplace));
+               ++order_cnt;
                break;
             }
             case 'P':
@@ -180,11 +191,11 @@ public:
          }
       }
 
-      return orders;
+      return order_cnt;
    }
 
    static uint64_t ParseFile(const std::string &fpath) {
-      std::ofstream bin(fpath + ".bin", std::ios_base::in | std::ios_base::binary);
+      std::ofstream out(fpath + ".bin", std::ios_base::out | std::ios_base::binary);
 
       nostromo::Mmap<unsigned char> mmap{fpath};
       auto data = mmap.Ptr();
@@ -235,7 +246,7 @@ public:
                order.bid = itch->bid == 'B' ? 1 : 0;
                order.quantity = Quantity(itch->quantity);
                order.price = Price(itch->price);
-               Write(bin, msg_type, &order, sizeof(ItchOrderAdd));
+               Write(out, msg_type, &order, sizeof(ItchOrderAdd));
                ++order_cnt;
                offset += 35;
                break;
@@ -249,7 +260,7 @@ public:
                order.bid = itch->bid == 'B' ? 1 : 0;
                order.quantity = Quantity(itch->quantity);
                order.price = Price(itch->price);
-               Write(bin, msg_type, &order, sizeof(ItchOrderAdd));
+               Write(out, msg_type, &order, sizeof(ItchOrderAdd));
                ++order_cnt;
                offset += 39;
                break;
@@ -261,7 +272,7 @@ public:
                order.timestamp = Timestamp(itch->timestamp);
                order.order_id = OrderId(itch->order_id);
                order.quantity = Quantity(itch->quantity);
-               Write(bin, msg_type, &order, sizeof(ItchOrderExecuted));
+               Write(out, msg_type, &order, sizeof(ItchOrderExecuted));
                ++order_cnt;
                offset += 30;
                break;
@@ -273,7 +284,7 @@ public:
                order.timestamp = Timestamp(itch->timestamp);
                order.order_id = OrderId(itch->order_id);
                order.quantity = Quantity(itch->quantity);
-               Write(bin, msg_type, &order, sizeof(ItchOrderExecuted));
+               Write(out, msg_type, &order, sizeof(ItchOrderExecuted));
                ++order_cnt;
                offset += 35;
                break;
@@ -285,7 +296,7 @@ public:
                order.timestamp = Timestamp(itch->timestamp);
                order.order_id = OrderId(itch->order_id);
                order.quantity = Quantity(itch->quantity);
-               Write(bin, msg_type, &order, sizeof(ItchOrderCancel));
+               Write(out, msg_type, &order, sizeof(ItchOrderCancel));
                ++order_cnt;
                offset += 22;
                break;
@@ -296,7 +307,7 @@ public:
                order.stock_code = StockCode(itch->stock_code);
                order.timestamp = Timestamp(itch->timestamp);
                order.order_id = OrderId(itch->order_id);
-               Write(bin, msg_type, &order, sizeof(ItchOrderDelete));
+               Write(out, msg_type, &order, sizeof(ItchOrderDelete));
                ++order_cnt;
                offset += 18;
                break;
@@ -310,7 +321,7 @@ public:
                order.new_order_id = OrderId(itch->new_order_id);
                order.quantity = Quantity(itch->quantity);
                order.price = Price(itch->price);
-               Write(bin, msg_type, &order, sizeof(ItchOrderReplace));
+               Write(out, msg_type, &order, sizeof(ItchOrderReplace));
                ++order_cnt;
                offset += 34;
                break;
@@ -397,9 +408,17 @@ public:
 } // namespace order_book::itch
 
 int main() {
+   const auto fnames = {
+         "01302019.NASDAQ_ITCH50.gz",
+         "01302020.NASDAQ_ITCH50.gz",
+         "12302019.NASDAQ_ITCH50.gz"
+   };
+
    const std::string base_dir = "/remote/data/nasdaq-itch/";
-//   const std::string fpath = base_dir + "01302020.NASDAQ_ITCH50.bin";
-   const std::string fpath = base_dir + "12302019.NASDAQ_ITCH50";
-   order_book::itch::ItchRawParser::Parse(fpath);
+
+   for (const auto &fname: fnames) {
+      const auto fpath = base_dir + fname;
+      order_book::itch::ItchRawParser::Parse(fpath);
+   }
    return 0;
 }
