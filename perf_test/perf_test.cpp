@@ -2,8 +2,7 @@
 #include <cstdio>
 #include <stdexcept>
 #include <string>
-#include <chrono>
-#include <map>
+#include <set>
 
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
@@ -21,8 +20,9 @@ public:
    static auto CreateMetaData(
          unsigned char *data,
          const uint64_t fsize) {
-      // stock_code -> set<price>
-      MAP<uint16_t, SET<uint32_t>> stock_prices;
+      MAP<uint32_t, uint8_t> bid_map;
+      // stock_code -> pair<bid_prices, ask_prices>
+      MAP<uint16_t, std::pair<SET<uint32_t>, SET<uint32_t>>> stock_prices;
       uint32_t max_order_id = 0;
       uint64_t offset = 0;
 
@@ -34,7 +34,9 @@ public:
             case 'F': {
                auto order = (ItchOrderAdd *) &data[offset];
                if (order->order_id > max_order_id) max_order_id = order->order_id;
-               stock_prices[order->stock_code].insert(order->price);
+               if (order->bid) stock_prices[order->stock_code].first.insert(order->price);
+               else stock_prices[order->stock_code].second.insert(order->price);
+               bid_map[order->order_id] = order->bid;
                offset += 23;
                break;
             }
@@ -49,7 +51,8 @@ public:
             case 'U': {
                auto order = (ItchOrderReplace *) &data[offset];
                if (order->new_order_id > max_order_id) max_order_id = order->new_order_id;
-               stock_prices[order->stock_code].insert(order->price);
+               if (bid_map[order->orig_order_id]) stock_prices[order->stock_code].first.insert(order->price);
+               else stock_prices[order->stock_code].second.insert(order->price);
                offset += 26;
                break;
             }
@@ -64,18 +67,10 @@ public:
 
 } // namespace order_book::itch::v02::perf_test
 
-auto count_orders(
-      unsigned char *data,
-      const uint64_t fsize) {
-
-}
-
 int main() {
    using order_book::itch::v02::perf_test::PerfTest;
-
    const std::string base_dir = "/remote/data/nasdaq-itch/";
    const std::string fpath = base_dir + "01302020.NASDAQ_ITCH50.bin";
-//   const std::string fpath = base_dir + "12302019.NASDAQ_ITCH50.bin";
 
    nostromo::Mmap<unsigned char> mmap{fpath};
    auto data = mmap.Ptr();
