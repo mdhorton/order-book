@@ -330,9 +330,7 @@ public:
    }
 
 
-   static void SetBaseFields(
-         ItchBase &order,
-         ItchRawBase &itch) {
+   static void SetBaseFields(ItchBase &order, ItchRawBase &itch) {
       order.stock_code = StockCode(itch.stock_code);
       order.timestamp = Timestamp(itch.timestamp);
       order.order_id = OrderId(itch.order_id);
@@ -346,10 +344,6 @@ public:
       if (in.gcount() != n) {
          throw nostromo::Error("read() failed", EX_INFO);
       }
-   }
-
-   static void WriteCsv(ItchOrderReplace order) {
-
    }
 
    static void Write(

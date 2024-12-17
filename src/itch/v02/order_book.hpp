@@ -18,6 +18,8 @@
 
 namespace order_book::itch::v02 {
 
+uint64_t max_size = 0;
+
 class OrderBook {
    std::vector<Order> &all_orders_;
    const size_t bid_price_cnt;
@@ -43,6 +45,14 @@ public:
          bid_price_cnt{bid_prices.size()},
          ask_price_cnt{ask_prices.size()} {
       {
+         if (bid_prices.size() > max_size) {
+            max_size = bid_prices.size();
+         }
+
+         if (ask_prices.size() > max_size) {
+            max_size = ask_prices.size();
+         }
+
          bid_levels_.reserve(bid_prices.size());
          uint16_t idx = 0;
 
@@ -147,14 +157,14 @@ public:
 
    [[nodiscard]] ALWAYS_INLINE
    PriceLevel *PriceLevelFromPrice(
-         const uint32_t bid,
+         const uint8_t bid,
          const uint32_t price) {
       return bid ? bid_price_map_[price] : ask_price_map_[price];
    }
 
    [[nodiscard]] ALWAYS_INLINE
    PriceLevel *PriceLevelFromIndex(
-         const uint32_t bid,
+         const uint8_t bid,
          const uint32_t idx) {
       return bid ? &bid_levels_[idx] : &ask_levels_[idx];
    }
@@ -329,10 +339,15 @@ public:
 
       for (uint16_t idx = 0; idx <= max_stock_id; ++idx) {
          auto res = stock_prices.find(idx);
-         if (res == stock_prices.end()) continue;
+         if (res == stock_prices.end()) {
+            order_books_.emplace_back(orders_, std::set<uint32_t>{}, std::set<uint32_t>{});
+            continue;
+         }
          auto pair = res->second;
          order_books_.emplace_back(orders_, pair.first, pair.second);
       }
+
+      printf("max size: %lu\n", max_size);
    }
 
    void OrderAdd(const ItchOrderAdd &order) {

@@ -17,9 +17,7 @@ namespace order_book::itch::v02::perf_test {
 
 class PerfTest {
 public:
-   static auto CreateMetaData(
-         char *data,
-         uint64_t fsize) {
+   static auto CreateMetaData(char *data, uint64_t fsize) {
       auto start = nostromo::TimeUtils::Now();
 
       MAP<uint32_t, uint8_t> bid_map;
