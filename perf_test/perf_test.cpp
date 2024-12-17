@@ -1,7 +1,7 @@
 #include <cstdint>
-#include <cstdio>
 #include <stdexcept>
 #include <string>
+#include <iostream>
 #include <set>
 
 #include <boost/unordered/unordered_flat_map.hpp>
@@ -18,7 +18,7 @@ namespace order_book::itch::v02::perf_test {
 class PerfTest {
 public:
    static auto CreateMetaData(
-         unsigned char *data,
+         char *data,
          const uint64_t fsize) {
       MAP<uint32_t, uint8_t> bid_map;
       // stock_code -> pair<bid_prices, ask_prices>
@@ -69,20 +69,35 @@ public:
 
 int main() {
    using order_book::itch::v02::perf_test::PerfTest;
+
+   std::cout.imbue(std::locale(""));
    const std::string base_dir = "/remote/data/nasdaq-itch/";
-   const std::string fpath = base_dir + "01302020.NASDAQ_ITCH50.bin";
 
-   nostromo::Mmap<unsigned char> mmap{fpath};
-   auto data = mmap.Ptr();
-   auto fsize = mmap.Size();
+   const auto fnames = {
+         "01302019.NASDAQ_ITCH50.bin",
+         "01302020.NASDAQ_ITCH50.bin",
+         "12302019.NASDAQ_ITCH50.bin"
+   };
 
-   auto start = nostromo::TimeUtils::Now();
-   auto [max_order_id, stock_prices] = PerfTest::CreateMetaData(data, fsize);
-   auto stop = nostromo::TimeUtils::Now();
-   auto elap = stop - start;
+   for (const auto &fname: fnames) {
+      const auto fpath = base_dir + fname;
+      std::cout << "processing: " << fpath << std::endl;
 
-   printf("max order id: %u\n", max_order_id);
-   printf("elapsed: %zu\n", elap.count());
+      nostromo::Mmap<char> mmap{fpath};
+      auto data = mmap.Ptr();
+      auto fsize = mmap.Size();
+
+      auto start = nostromo::TimeUtils::Now();
+      auto [max_order_id, stock_prices] =
+            PerfTest::CreateMetaData(data, fsize);
+      auto stop = nostromo::TimeUtils::Now();
+      auto elap = stop - start;
+
+      std::cout
+            << "max order id: " << max_order_id << std::endl
+            << "elapsed: " << elap.count() << std::endl;
+      std::cout << std::endl;
+   }
 
    return 0;
 }

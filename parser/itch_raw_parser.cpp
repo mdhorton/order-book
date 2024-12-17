@@ -39,113 +39,113 @@ public:
       const auto out_path = in_path.substr(0, in_path.length() - 3) + ".bin";
       std::ofstream out(out_path, std::ios_base::out | std::ios_base::binary);
 
-      std::ifstream file(in_path, std::ios_base::in | std::ios_base::binary);
-      io::filtering_istream in;
-      in.push(io::gzip_decompressor()); // add decompressor to the filter stack.
-      in.push(file); // add file stream to the filter stack.
+      std::ifstream in(in_path, std::ios_base::in | std::ios_base::binary);
+      io::filtering_istream filter;
+      filter.push(io::gzip_decompressor()); // add decompressor to the filter stack.
+      filter.push(in); // add file stream to the filter stack.
 
       char msg_type;
       char msg[64]; // all messages are less than 64 bytes.
       uint64_t order_cnt = 0;
 
       while (true) {
-         in.read(&msg_type, 1);
-         if (in.gcount() == 0) {
-            if (in.eof()) break;
+         filter.read(&msg_type, 1);
+         if (filter.gcount() == 0) {
+            if (filter.eof()) break;
             throw nostromo::Error("read failed", EX_INFO);
          }
 
          switch (msg_type) {
-         case 'S':
-            Read(in, msg, 11);
-            break;
-         case 'R':
-            Read(in, msg, 38);
-            break;
-         case 'H':
-            Read(in, msg, 24);
-            break;
-         case 'Y':
-            Read(in, msg, 19);
-            break;
-         case 'L':
-            Read(in, msg, 25);
-            break;
-         case 'V':
-            Read(in, msg, 34);
-            break;
-         case 'W':
-            Read(in, msg, 11);
-            break;
-         case 'K':
-            Read(in, msg, 27);
-            break;
-         case 'J':
-            Read(in, msg, 34);
-            break;
-         case 'h':
-            Read(in, msg, 20);
-            break;
-         case 'A': {
-            Read(in, msg, 35);
-            Handle_A(msg, msg_type, out);
-            ++order_cnt;
-            break;
-         }
-         case 'F': {
-            Read(in, msg, 39);
-            Handle_F(msg, msg_type, out);
-            ++order_cnt;
-            break;
-         }
-         case 'E': {
-            Read(in, msg, 30);
-            Handle_E(msg, msg_type, out);
-            ++order_cnt;
-            break;
-         }
-         case 'C': {
-            Read(in, msg, 35);
-            Handle_C(msg, msg_type, out);
-            ++order_cnt;
-            break;
-         }
-         case 'X': {
-            Read(in, msg, 22);
-            Handle_X(msg, msg_type, out);
-            ++order_cnt;
-            break;
-         }
-         case 'D': {
-            Read(in, msg, 18);
-            Handle_D(msg, msg_type, out);
-            ++order_cnt;
-            break;
-         }
-         case 'U': {
-            Read(in, msg, 34);
-            Handle_U(msg, msg_type, out);
-            ++order_cnt;
-            break;
-         }
-         case 'P':
-            Read(in, msg, 43);
-            break;
-         case 'Q':
-            Read(in, msg, 39);
-            break;
-         case 'B':
-            Read(in, msg, 18);
-            break;
-         case 'I':
-            Read(in, msg, 49);
-            break;
-         case 'N':
-            Read(in, msg, 19);
-            break;
-         case 'O':
-            Read(in, msg, 47);
-            break;
+            case 'S':
+               Read(filter, msg, 11);
+               break;
+            case 'R':
+               Read(filter, msg, 38);
+               break;
+            case 'H':
+               Read(filter, msg, 24);
+               break;
+            case 'Y':
+               Read(filter, msg, 19);
+               break;
+            case 'L':
+               Read(filter, msg, 25);
+               break;
+            case 'V':
+               Read(filter, msg, 34);
+               break;
+            case 'W':
+               Read(filter, msg, 11);
+               break;
+            case 'K':
+               Read(filter, msg, 27);
+               break;
+            case 'J':
+               Read(filter, msg, 34);
+               break;
+            case 'h':
+               Read(filter, msg, 20);
+               break;
+            case 'A': {
+               Read(filter, msg, 35);
+               Handle_A(msg, msg_type, out);
+               ++order_cnt;
+               break;
+            }
+            case 'F': {
+               Read(filter, msg, 39);
+               Handle_F(msg, msg_type, out);
+               ++order_cnt;
+               break;
+            }
+            case 'E': {
+               Read(filter, msg, 30);
+               Handle_E(msg, msg_type, out);
+               ++order_cnt;
+               break;
+            }
+            case 'C': {
+               Read(filter, msg, 35);
+               Handle_C(msg, msg_type, out);
+               ++order_cnt;
+               break;
+            }
+            case 'X': {
+               Read(filter, msg, 22);
+               Handle_X(msg, msg_type, out);
+               ++order_cnt;
+               break;
+            }
+            case 'D': {
+               Read(filter, msg, 18);
+               Handle_D(msg, msg_type, out);
+               ++order_cnt;
+               break;
+            }
+            case 'U': {
+               Read(filter, msg, 34);
+               Handle_U(msg, msg_type, out);
+               ++order_cnt;
+               break;
+            }
+            case 'P':
+               Read(filter, msg, 43);
+               break;
+            case 'Q':
+               Read(filter, msg, 39);
+               break;
+            case 'B':
+               Read(filter, msg, 18);
+               break;
+            case 'I':
+               Read(filter, msg, 49);
+               break;
+            case 'N':
+               Read(filter, msg, 19);
+               break;
+            case 'O':
+               Read(filter, msg, 47);
+               break;
          }
       }
 
@@ -165,98 +165,98 @@ public:
          auto msg_type = data[offset++];
 
          switch (msg_type) {
-         case 'S':
-            offset += 11;
-            break;
-         case 'R':
-            offset += 38;
-            break;
-         case 'H':
-            offset += 24;
-            break;
-         case 'Y':
-            offset += 19;
-            break;
-         case 'L':
-            offset += 25;
-            break;
-         case 'V':
-            offset += 34;
-            break;
-         case 'W':
-            offset += 11;
-            break;
-         case 'K':
-            offset += 27;
-            break;
-         case 'J':
-            offset += 34;
-            break;
-         case 'h':
-            offset += 20;
-            break;
-         case 'A': {
-            Handle_A(data + offset, msg_type, out);
-            ++order_cnt;
-            offset += 35;
-            break;
-         }
-         case 'F': {
-            Handle_F(data + offset, msg_type, out);
-            ++order_cnt;
-            offset += 39;
-            break;
-         }
-         case 'E': {
-            Handle_E(data + offset, msg_type, out);
-            ++order_cnt;
-            offset += 30;
-            break;
-         }
-         case 'C': {
-            Handle_C(data + offset, msg_type, out);
-            ++order_cnt;
-            offset += 35;
-            break;
-         }
-         case 'X': {
-            Handle_X(data + offset, msg_type, out);
-            ++order_cnt;
-            offset += 22;
-            break;
-         }
-         case 'D': {
-            Handle_D(data + offset, msg_type, out);
-            ++order_cnt;
-            offset += 18;
-            break;
-         }
-         case 'U': {
-            Handle_U(data + offset, msg_type, out);
-            ++order_cnt;
-            offset += 34;
-            break;
-         }
-         case 'P':
-            offset += 43;
-            break;
-         case 'Q':
-            offset += 39;
-            break;
-         case 'B':
-            offset += 18;
-            break;
-         case 'I':
-            offset += 49;
-            break;
-         case 'N':
-            offset += 19;
-            break;
-         case 'O':
-            offset += 47;
-            break;
-         default:
-            ++offset;
+            case 'S':
+               offset += 11;
+               break;
+            case 'R':
+               offset += 38;
+               break;
+            case 'H':
+               offset += 24;
+               break;
+            case 'Y':
+               offset += 19;
+               break;
+            case 'L':
+               offset += 25;
+               break;
+            case 'V':
+               offset += 34;
+               break;
+            case 'W':
+               offset += 11;
+               break;
+            case 'K':
+               offset += 27;
+               break;
+            case 'J':
+               offset += 34;
+               break;
+            case 'h':
+               offset += 20;
+               break;
+            case 'A': {
+               Handle_A(data + offset, msg_type, out);
+               ++order_cnt;
+               offset += 35;
+               break;
+            }
+            case 'F': {
+               Handle_F(data + offset, msg_type, out);
+               ++order_cnt;
+               offset += 39;
+               break;
+            }
+            case 'E': {
+               Handle_E(data + offset, msg_type, out);
+               ++order_cnt;
+               offset += 30;
+               break;
+            }
+            case 'C': {
+               Handle_C(data + offset, msg_type, out);
+               ++order_cnt;
+               offset += 35;
+               break;
+            }
+            case 'X': {
+               Handle_X(data + offset, msg_type, out);
+               ++order_cnt;
+               offset += 22;
+               break;
+            }
+            case 'D': {
+               Handle_D(data + offset, msg_type, out);
+               ++order_cnt;
+               offset += 18;
+               break;
+            }
+            case 'U': {
+               Handle_U(data + offset, msg_type, out);
+               ++order_cnt;
+               offset += 34;
+               break;
+            }
+            case 'P':
+               offset += 43;
+               break;
+            case 'Q':
+               offset += 39;
+               break;
+            case 'B':
+               offset += 18;
+               break;
+            case 'I':
+               offset += 49;
+               break;
+            case 'N':
+               offset += 19;
+               break;
+            case 'O':
+               offset += 47;
+               break;
+            default:
+               ++offset;
          }
       }
 
@@ -391,7 +391,10 @@ public:
 } // namespace order_book::itch
 
 int main() {
+   using order_book::itch::ItchRawParser;
+
    std::cout.imbue(std::locale(""));
+   const std::string base_dir = "/remote/data/nasdaq-itch/";
 
    const auto fnames = {
          "01302019.NASDAQ_ITCH50.gz",
@@ -399,11 +402,9 @@ int main() {
          "12302019.NASDAQ_ITCH50.gz"
    };
 
-   const std::string base_dir = "/remote/data/nasdaq-itch/";
-
    for (const auto &fname: fnames) {
       const auto fpath = base_dir + fname;
-      order_book::itch::ItchRawParser::Parse(fpath);
+      ItchRawParser::Parse(fpath);
    }
 
    return 0;
