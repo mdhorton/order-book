@@ -51,7 +51,7 @@ public:
             case 'U': {
                auto order = (ItchOrderReplace *) &data[offset];
                if (order->new_order_id > max_order_id) max_order_id = order->new_order_id;
-               if (bid_map[order->orig_order_id]) stock_prices[order->stock_code].first.insert(order->price);
+               if (bid_map[order->order_id]) stock_prices[order->stock_code].first.insert(order->price);
                else stock_prices[order->stock_code].second.insert(order->price);
                offset += 26;
                break;

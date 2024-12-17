@@ -334,7 +334,7 @@ public:
       ItchOrderReplace order{};
       order.stock_code = StockCode(itch->stock_code);
       order.timestamp = Timestamp(itch->timestamp);
-      order.orig_order_id = OrderId(itch->order_id);
+      order.order_id = OrderId(itch->order_id);
       order.new_order_id = OrderId(itch->new_order_id);
       order.quantity = Quantity(itch->quantity);
       order.price = Price(itch->price);

@@ -113,9 +113,9 @@ public:
    void OrderReplace(const ItchOrderReplace &itch_order) {
       tmp_order_delete_.stock_code = itch_order.stock_code;
       tmp_order_delete_.timestamp = itch_order.timestamp;
-      tmp_order_delete_.order_id = itch_order.orig_order_id;
+      tmp_order_delete_.order_id = itch_order.order_id;
       OrderDeleteImpl(tmp_order_delete_);
-      const auto orig_order = OrderFromId(itch_order.orig_order_id);
+      const auto orig_order = OrderFromId(itch_order.order_id);
       tmp_order_add_.stock_code = itch_order.stock_code;
       tmp_order_add_.timestamp = itch_order.timestamp;
       tmp_order_add_.order_id = itch_order.new_order_id;
