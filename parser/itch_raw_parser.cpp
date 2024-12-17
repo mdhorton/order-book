@@ -56,6 +56,8 @@ public:
          }
 
          switch (msg_type) {
+            default:
+               break;
             case 'S':
                Read(filter, msg, 11);
                break;
@@ -165,6 +167,9 @@ public:
          auto msg_type = data[offset++];
 
          switch (msg_type) {
+            default:
+               ++offset;
+               break;
             case 'S':
                offset += 11;
                break;
@@ -255,8 +260,6 @@ public:
             case 'O':
                offset += 47;
                break;
-            default:
-               ++offset;
          }
       }
 
@@ -377,14 +380,14 @@ public:
    }
 
    static uint64_t Timestamp(const __u8 *timestamp) {
-      return ((uint64_t)(0) << 56) |
-             ((uint64_t)(0) << 48) |
-             ((uint64_t)(timestamp[0]) << 40) |
-             ((uint64_t)(timestamp[1]) << 32) |
-             ((uint64_t)(timestamp[2]) << 24) |
-             ((uint64_t)(timestamp[3]) << 16) |
-             ((uint64_t)(timestamp[4]) << 8) |
-             ((uint64_t)(timestamp[5]));
+      return ((uint64_t) (0) << 56) |
+             ((uint64_t) (0) << 48) |
+             ((uint64_t) (timestamp[0]) << 40) |
+             ((uint64_t) (timestamp[1]) << 32) |
+             ((uint64_t) (timestamp[2]) << 24) |
+             ((uint64_t) (timestamp[3]) << 16) |
+             ((uint64_t) (timestamp[4]) << 8) |
+             ((uint64_t) (timestamp[5]));
    }
 };
 

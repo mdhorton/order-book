@@ -1,4 +1,4 @@
-find_package(GTest REQUIRED PATHS /remote/googletest/current/install)
+find_package(GTest REQUIRED PATHS ${EXTERNAL_DEPENDENCY_DIR}/googletest/current/install)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 

@@ -10,5 +10,5 @@ add_executable(
 target_link_libraries(
         itch_raw_parser
         ${ZLIB_LIBRARIES}
-        /remote/boost/current/install/lib/libboost_iostreams.so
+        ${EXTERNAL_DEPENDENCY_DIR}/boost/current/install/lib/libboost_iostreams.so
 )

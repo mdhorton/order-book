@@ -1,4 +1,4 @@
-find_package(benchmark REQUIRED PATHS /remote/googlebenchmark/current/build)
+find_package(benchmark REQUIRED PATHS ${EXTERNAL_DEPENDENCY_DIR}/googlebenchmark/current/build)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 

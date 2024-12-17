@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.30)
 
 project(order_book VERSION 1.0)
 
+set(INTERNAL_DEPENDENCY_DIR /home/mdhorton/CLionProjects)
+set(EXTERNAL_DEPENDENCY_DIR /remote)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -34,11 +37,11 @@ add_compile_options(
         -Wsign-compare
 )
 
-include_directories(../nostromo/src)
+include_directories(${INTERNAL_DEPENDENCY_DIR}/nostromo/src)
 
 # eliminate boost -Wundef warnings.
 add_compile_definitions(BOOST_LIBSTDCXX_VERSION_WORKAROUND_GUARD=0)
-include_directories(/remote/boost/current/install/include)
+include_directories(${EXTERNAL_DEPENDENCY_DIR}/boost/current/install/include)
 
 #add_subdirectory(microbenchmark)
 add_subdirectory(perf_test)
