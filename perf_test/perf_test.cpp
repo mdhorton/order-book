@@ -123,19 +123,32 @@ public:
             case 'A':
             case 'F': {
                auto order = (ItchOrderAdd *) &data[offset];
+               books.OrderAdd(*order);
                offset += 23;
                break;
             }
             case 'E':
-            case 'C':
-            case 'X':
+            case 'C': {
+               auto order = (ItchOrderExecuted *) &data[offset];
+               books.OrderExecuted(*order);
                offset += 18;
                break;
-            case 'D':
+            }
+            case 'X': {
+               auto order = (ItchOrderCancel *) &data[offset];
+               books.OrderCancel(*order);
+               offset += 18;
+               break;
+            }
+            case 'D': {
+               auto order = (ItchOrderDelete *) &data[offset];
+               books.OrderDelete(*order);
                offset += 14;
                break;
+            }
             case 'U': {
                auto order = (ItchOrderReplace *) &data[offset];
+               books.OrderReplace(*order);
                offset += 26;
                break;
             }

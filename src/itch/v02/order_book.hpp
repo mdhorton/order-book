@@ -334,6 +334,26 @@ public:
          order_books_.emplace_back(orders_, pair.first, pair.second);
       }
    }
+
+   void OrderAdd(const ItchOrderAdd &order) {
+      order_books_[order.stock_code].OrderAdd(order);
+   }
+
+   void OrderExecuted(const ItchOrderExecuted &order) {
+      order_books_[order.stock_code].OrderExecuted(order);
+   }
+
+   void OrderCancel(const ItchOrderCancel &order) {
+      order_books_[order.stock_code].OrderCancel(order);
+   }
+
+   void OrderDelete(const ItchOrderDelete &order) {
+      order_books_[order.stock_code].OrderDelete(order);
+   }
+
+   void OrderReplace(const ItchOrderReplace &order) {
+      order_books_[order.stock_code].OrderReplace(order);
+   }
 };
 
 } // order_book::itch::v02
