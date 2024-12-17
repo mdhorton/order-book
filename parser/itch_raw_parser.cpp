@@ -16,11 +16,12 @@ class ItchRawParser {
 public:
    static void Parse(const std::string &fpath) {
       std::cout << "processing: " << fpath << std::endl;
-
       auto start = nostromo::TimeUtils::Now();
+
       auto order_cnt = fpath.ends_with(".gz") ?
                        ParseFileGzip(fpath) :
                        ParseFile(fpath);
+
       auto stop = nostromo::TimeUtils::Now();
       auto elap = stop - start;
       auto ops = order_cnt / (elap.count() / 1'000'000'000);
@@ -28,16 +29,17 @@ public:
       std::cout
             << "order count: " << order_cnt << std::endl
             << "elapsed: " << elap.count() << std::endl
-            << "orders/sec: " << ops << std::endl;
-      std::cout << std::endl;
+            << "orders/sec: " << ops << std::endl
+            << std::endl;
    }
 
    static uint64_t ParseFileGzip(const std::string &in_path) {
       namespace io = boost::iostreams;
 
       // replace .gz with .bin
-      const auto out_path = in_path.substr(0, in_path.length() - 3) + ".bin";
-      std::ofstream out(out_path, std::ios_base::out | std::ios_base::binary);
+      const auto base_fpath = in_path.substr(0, in_path.length() - 3);
+      std::ofstream out_bin(base_fpath + ".bin", std::ios_base::out | std::ios_base::binary);
+      std::ofstream out_csv(base_fpath + ".csv", std::ios_base::out);
 
       std::ifstream in(in_path, std::ios_base::in | std::ios_base::binary);
       io::filtering_istream filter;
@@ -90,43 +92,43 @@ public:
                break;
             case 'A': {
                Read(filter, msg, 35);
-               Handle_A(msg, msg_type, out);
+               Handle_A(msg, out_bin);
                ++order_cnt;
                break;
             }
             case 'F': {
                Read(filter, msg, 39);
-               Handle_F(msg, msg_type, out);
+               Handle_F(msg, out_bin);
                ++order_cnt;
                break;
             }
             case 'E': {
                Read(filter, msg, 30);
-               Handle_E(msg, msg_type, out);
+               Handle_E(msg, out_bin);
                ++order_cnt;
                break;
             }
             case 'C': {
                Read(filter, msg, 35);
-               Handle_C(msg, msg_type, out);
+               Handle_C(msg, out_bin);
                ++order_cnt;
                break;
             }
             case 'X': {
                Read(filter, msg, 22);
-               Handle_X(msg, msg_type, out);
+               Handle_X(msg, out_bin);
                ++order_cnt;
                break;
             }
             case 'D': {
                Read(filter, msg, 18);
-               Handle_D(msg, msg_type, out);
+               Handle_D(msg, out_bin);
                ++order_cnt;
                break;
             }
             case 'U': {
                Read(filter, msg, 34);
-               Handle_U(msg, msg_type, out);
+               Handle_U(msg, out_bin);
                ++order_cnt;
                break;
             }
@@ -201,43 +203,43 @@ public:
                offset += 20;
                break;
             case 'A': {
-               Handle_A(data + offset, msg_type, out);
+               Handle_A(data + offset, out);
                ++order_cnt;
                offset += 35;
                break;
             }
             case 'F': {
-               Handle_F(data + offset, msg_type, out);
+               Handle_F(data + offset, out);
                ++order_cnt;
                offset += 39;
                break;
             }
             case 'E': {
-               Handle_E(data + offset, msg_type, out);
+               Handle_E(data + offset, out);
                ++order_cnt;
                offset += 30;
                break;
             }
             case 'C': {
-               Handle_C(data + offset, msg_type, out);
+               Handle_C(data + offset, out);
                ++order_cnt;
                offset += 35;
                break;
             }
             case 'X': {
-               Handle_X(data + offset, msg_type, out);
+               Handle_X(data + offset, out);
                ++order_cnt;
                offset += 22;
                break;
             }
             case 'D': {
-               Handle_D(data + offset, msg_type, out);
+               Handle_D(data + offset, out);
                ++order_cnt;
                offset += 18;
                break;
             }
             case 'U': {
-               Handle_U(data + offset, msg_type, out);
+               Handle_U(data + offset, out);
                ++order_cnt;
                offset += 34;
                break;
@@ -266,79 +268,74 @@ public:
       return order_cnt;
    }
 
-   static void Handle_A(char *msg, char msg_type, std::ofstream &out) {
+   static void Handle_A(char *msg, std::ofstream &bin_out) {
       auto itch = (ItchRawOrderAdd *) msg;
       ItchOrderAdd order{};
-      order.stock_code = StockCode(itch->stock_code);
-      order.timestamp = Timestamp(itch->timestamp);
-      order.order_id = OrderId(itch->order_id);
+      SetBaseFields(order, *itch);
       order.bid = itch->bid == 'B' ? 1 : 0;
       order.quantity = Quantity(itch->quantity);
       order.price = Price(itch->price);
-      Write(out, msg_type, &order, sizeof(ItchOrderAdd));
+      Write(bin_out, 'A', &order, sizeof(ItchOrderAdd));
    }
 
-   static void Handle_F(char *msg, char msg_type, std::ofstream &out) {
+   static void Handle_F(char *msg, std::ofstream &out) {
       auto itch = (ItchRawOrderAddMpid *) msg;
       ItchOrderAdd order{};
-      order.stock_code = StockCode(itch->stock_code);
-      order.timestamp = Timestamp(itch->timestamp);
-      order.order_id = OrderId(itch->order_id);
+      SetBaseFields(order, *itch);
       order.bid = itch->bid == 'B' ? 1 : 0;
       order.quantity = Quantity(itch->quantity);
       order.price = Price(itch->price);
-      Write(out, msg_type, &order, sizeof(ItchOrderAdd));
+      Write(out, 'F', &order, sizeof(ItchOrderAdd));
    }
 
-   static void Handle_E(char *msg, char msg_type, std::ofstream &out) {
+   static void Handle_E(char *msg, std::ofstream &out) {
       auto itch = (ItchRawOrderExecuted *) msg;
       ItchOrderExecuted order{};
-      order.stock_code = StockCode(itch->stock_code);
-      order.timestamp = Timestamp(itch->timestamp);
-      order.order_id = OrderId(itch->order_id);
+      SetBaseFields(order, *itch);
       order.quantity = Quantity(itch->quantity);
-      Write(out, msg_type, &order, sizeof(ItchOrderExecuted));
+      Write(out, 'E', &order, sizeof(ItchOrderExecuted));
    }
 
-   static void Handle_C(char *msg, char msg_type, std::ofstream &out) {
+   static void Handle_C(char *msg, std::ofstream &out) {
       auto itch = (ItchRawOrderExecutedPrice *) msg;
       ItchOrderExecuted order{};
-      order.stock_code = StockCode(itch->stock_code);
-      order.timestamp = Timestamp(itch->timestamp);
-      order.order_id = OrderId(itch->order_id);
+      SetBaseFields(order, *itch);
       order.quantity = Quantity(itch->quantity);
-      Write(out, msg_type, &order, sizeof(ItchOrderExecuted));
+      Write(out, 'C', &order, sizeof(ItchOrderExecuted));
    }
 
-   static void Handle_X(char *msg, char msg_type, std::ofstream &out) {
+   static void Handle_X(char *msg, std::ofstream &out) {
       auto itch = (ItchRawOrderCancel *) msg;
       ItchOrderCancel order{};
-      order.stock_code = StockCode(itch->stock_code);
-      order.timestamp = Timestamp(itch->timestamp);
-      order.order_id = OrderId(itch->order_id);
+      SetBaseFields(order, *itch);
       order.quantity = Quantity(itch->quantity);
-      Write(out, msg_type, &order, sizeof(ItchOrderCancel));
+      Write(out, 'X', &order, sizeof(ItchOrderCancel));
    }
 
-   static void Handle_D(char *msg, char msg_type, std::ofstream &out) {
+   static void Handle_D(char *msg, std::ofstream &out) {
       auto itch = (ItchRawOrderDelete *) msg;
       ItchOrderDelete order{};
-      order.stock_code = StockCode(itch->stock_code);
-      order.timestamp = Timestamp(itch->timestamp);
-      order.order_id = OrderId(itch->order_id);
-      Write(out, msg_type, &order, sizeof(ItchOrderDelete));
+      SetBaseFields(order, *itch);
+      Write(out, 'D', &order, sizeof(ItchOrderDelete));
    }
 
-   static void Handle_U(char *msg, char msg_type, std::ofstream &out) {
+   static void Handle_U(char *msg, std::ofstream &out) {
       auto itch = (ItchRawOrderReplace *) msg;
       ItchOrderReplace order{};
-      order.stock_code = StockCode(itch->stock_code);
-      order.timestamp = Timestamp(itch->timestamp);
-      order.order_id = OrderId(itch->order_id);
+      SetBaseFields(order, *itch);
       order.new_order_id = OrderId(itch->new_order_id);
       order.quantity = Quantity(itch->quantity);
       order.price = Price(itch->price);
-      Write(out, msg_type, &order, sizeof(ItchOrderReplace));
+      Write(out, 'U', &order, sizeof(ItchOrderReplace));
+   }
+
+
+   static void SetBaseFields(
+         ItchBase &order,
+         ItchRawBase &itch) {
+      order.stock_code = StockCode(itch.stock_code);
+      order.timestamp = Timestamp(itch.timestamp);
+      order.order_id = OrderId(itch.order_id);
    }
 
    static void Read(
@@ -349,6 +346,10 @@ public:
       if (in.gcount() != n) {
          throw nostromo::Error("read() failed", EX_INFO);
       }
+   }
+
+   static void WriteCsv(ItchOrderReplace order) {
+
    }
 
    static void Write(

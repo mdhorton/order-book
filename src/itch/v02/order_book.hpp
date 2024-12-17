@@ -314,6 +314,7 @@ class OrderBooks {
    std::vector<Order> orders_{};
    std::vector<OrderBook> order_books_{};
 
+public:
    OrderBooks(
          const uint32_t max_order_id,
          const std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> &stock_prices) {
