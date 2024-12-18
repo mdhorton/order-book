@@ -43,7 +43,7 @@ include_directories(${INTERNAL_DEPENDENCY_DIR}/nostromo/src)
 add_compile_definitions(BOOST_LIBSTDCXX_VERSION_WORKAROUND_GUARD=0)
 include_directories(${EXTERNAL_DEPENDENCY_DIR}/boost/current/install/include)
 
-#add_subdirectory(microbenchmark)
+add_subdirectory(microbenchmark)
 add_subdirectory(perf_test)
 add_subdirectory(src)
 add_subdirectory(test)

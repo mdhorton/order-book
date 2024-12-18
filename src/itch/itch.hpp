@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#include "common.hpp"
+#include "nostromo/macros.hpp"
 
 namespace order_book::itch {
 
