@@ -29,6 +29,8 @@ public:
 
       while (offset < fsize) {
          ++order_cnt;
+         if (order_cnt > 10'000'000) break;
+
          auto msg_type = data[offset++];
 
          switch (msg_type) {
@@ -36,9 +38,9 @@ public:
             case 'F': {
                auto order = (ItchOrderAdd *) &data[offset];
                if (order->order_id > max_order_id) max_order_id = order->order_id;
-               auto pair = stock_prices[order->stock_code];
-               auto prices = order->bid ? pair.first : pair.second;
-               prices.insert(order->price);
+               auto pair = &stock_prices[order->stock_code];
+               auto prices = order->bid ? &pair->first : &pair->second;
+               prices->insert(order->price);
                bid_map[order->order_id] = order->bid;
                offset += 23;
                break;
@@ -54,9 +56,9 @@ public:
             case 'U': {
                auto order = (ItchOrderReplace *) &data[offset];
                if (order->new_order_id > max_order_id) max_order_id = order->new_order_id;
-               auto pair = stock_prices[order->stock_code];
-               auto prices = bid_map[order->order_id] ? pair.first : pair.second;
-               prices.insert(order->price);
+               auto pair = &stock_prices[order->stock_code];
+               auto prices = bid_map[order->order_id] ? &pair->first : &pair->second;
+               prices->insert(order->price);
                offset += 26;
                break;
             }
@@ -115,6 +117,8 @@ public:
 
       while (offset < fsize) {
          ++order_cnt;
+         if (order_cnt > 10'000'000) break;
+
          auto msg_type = data[offset++];
 
          switch (msg_type) {

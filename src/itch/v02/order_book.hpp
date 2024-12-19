@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cassert>
+#include <span>
 #include <map>
 #include <set>
 
@@ -18,10 +19,8 @@
 
 namespace order_book::itch::v02 {
 
-uint64_t max_size = 0;
-
 class OrderBook {
-   std::vector<Order> &all_orders_;
+   std::span<Order> orders_;
    const size_t bid_price_cnt;
    const size_t ask_price_cnt;
 
@@ -38,22 +37,14 @@ class OrderBook {
 
 public:
    OrderBook(
-         std::vector<Order> &all_orders,
+         std::span<Order> orders,
          const std::set<uint32_t> &bid_prices,
          const std::set<uint32_t> &ask_prices) :
-         all_orders_{all_orders},
+         orders_{orders},
          bid_price_cnt{bid_prices.size()},
          ask_price_cnt{ask_prices.size()} {
       {
-         if (bid_prices.size() > max_size) {
-            max_size = bid_prices.size();
-         }
-
-         if (ask_prices.size() > max_size) {
-            max_size = ask_prices.size();
-         }
-
-         bid_levels_.reserve(bid_prices.size());
+         bid_levels_.reserve(bid_price_cnt);
          uint16_t idx = 0;
 
          for (auto price: bid_prices) {
@@ -67,7 +58,7 @@ public:
       }
 
       {
-         ask_levels_.reserve(ask_prices.size());
+         ask_levels_.reserve(ask_price_cnt);
          uint16_t idx = 0;
 
          for (auto price: ask_prices) {
@@ -171,7 +162,7 @@ public:
 
    [[nodiscard]] ALWAYS_INLINE
    Order *OrderFromId(const uint32_t order_id) {
-      return &all_orders_[order_id];
+      return &orders_[order_id];
    }
 
 private:
@@ -346,8 +337,6 @@ public:
          auto pair = res->second;
          order_books_.emplace_back(orders_, pair.first, pair.second);
       }
-
-      printf("max size: %lu\n", max_size);
    }
 
    void OrderAdd(const ItchOrderAdd &order) {
