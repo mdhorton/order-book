@@ -9,35 +9,18 @@
 
 #include "itch/itch.hpp"
 #include "itch/itch_raw.hpp"
+#include "itch/v02/order_book.hpp"
 
 namespace order_book::itch {
 
 class ItchRawParser {
-public:
-   static void Parse(const std::string &fpath) {
-      std::cout << "processing: " << fpath << std::endl;
+private:
+   static void ParseRawFile(std::string &in_path) {
       auto start = nostromo::TimeUtils::Now();
 
-      auto order_cnt = fpath.ends_with(".gz") ?
-                       ParseFileGzip(fpath) :
-                       ParseFile(fpath);
-
-      auto stop = nostromo::TimeUtils::Now();
-      auto elap = stop - start;
-      auto ops = order_cnt / (elap.count() / 1'000'000'000);
-
-      std::cout
-            << "order count: " << order_cnt << std::endl
-            << "elapsed: " << elap.count() << std::endl
-            << "orders/sec: " << ops << std::endl
-            << std::endl;
-   }
-
-   static uint64_t ParseFileGzip(const std::string &in_path) {
       namespace io = boost::iostreams;
 
-      // replace .gz with .bin
-      const auto base_fpath = in_path.substr(0, in_path.length() - 3);
+      auto base_fpath = RemoveExtension(in_path);
       std::ofstream out_bin(base_fpath + ".bin", std::ios_base::out | std::ios_base::binary);
       std::ofstream out_csv(base_fpath + ".csv", std::ios_base::out);
 
@@ -153,119 +136,16 @@ public:
          }
       }
 
-      return order_cnt;
-   }
+      auto stop = nostromo::TimeUtils::Now();
+      auto elap = stop - start;
+      auto ops = order_cnt / (elap.count() / 1'000'000'000);
 
-   static uint64_t ParseFile(const std::string &fpath) {
-      std::ofstream out(fpath + ".bin", std::ios_base::out | std::ios_base::binary);
-
-      nostromo::Mmap<char> mmap{fpath};
-      auto data = mmap.Ptr();
-      auto fsize = mmap.Size();
-      uint64_t offset = 0;
-      uint64_t order_cnt = 0;
-
-      while (offset < fsize) {
-         auto msg_type = data[offset++];
-
-         switch (msg_type) {
-            default:
-               ++offset;
-               break;
-            case 'S':
-               offset += 11;
-               break;
-            case 'R':
-               offset += 38;
-               break;
-            case 'H':
-               offset += 24;
-               break;
-            case 'Y':
-               offset += 19;
-               break;
-            case 'L':
-               offset += 25;
-               break;
-            case 'V':
-               offset += 34;
-               break;
-            case 'W':
-               offset += 11;
-               break;
-            case 'K':
-               offset += 27;
-               break;
-            case 'J':
-               offset += 34;
-               break;
-            case 'h':
-               offset += 20;
-               break;
-            case 'A': {
-               Handle_A(data + offset, out);
-               ++order_cnt;
-               offset += 35;
-               break;
-            }
-            case 'F': {
-               Handle_F(data + offset, out);
-               ++order_cnt;
-               offset += 39;
-               break;
-            }
-            case 'E': {
-               Handle_E(data + offset, out);
-               ++order_cnt;
-               offset += 30;
-               break;
-            }
-            case 'C': {
-               Handle_C(data + offset, out);
-               ++order_cnt;
-               offset += 35;
-               break;
-            }
-            case 'X': {
-               Handle_X(data + offset, out);
-               ++order_cnt;
-               offset += 22;
-               break;
-            }
-            case 'D': {
-               Handle_D(data + offset, out);
-               ++order_cnt;
-               offset += 18;
-               break;
-            }
-            case 'U': {
-               Handle_U(data + offset, out);
-               ++order_cnt;
-               offset += 34;
-               break;
-            }
-            case 'P':
-               offset += 43;
-               break;
-            case 'Q':
-               offset += 39;
-               break;
-            case 'B':
-               offset += 18;
-               break;
-            case 'I':
-               offset += 49;
-               break;
-            case 'N':
-               offset += 19;
-               break;
-            case 'O':
-               offset += 47;
-               break;
-         }
-      }
-
-      return order_cnt;
+      std::cout
+            << "ParseRawFile" << std::endl
+            << "order count: " << order_cnt << std::endl
+            << "elapsed: " << elap.count() << std::endl
+            << "orders/sec: " << ops << std::endl
+            << std::endl;
    }
 
    static void Handle_A(char *msg, std::ofstream &bin_out) {
@@ -329,6 +209,101 @@ public:
       Write(out, 'U', &order, sizeof(ItchOrderReplace));
    }
 
+   static auto CreateMetaData(std::string &fpath) {
+      auto start = nostromo::TimeUtils::Now();
+
+      auto in_path = RemoveExtension(fpath) + ".bin";
+
+      nostromo::Mmap<char> mmap{fpath};
+      auto data = mmap.Ptr();
+      auto fsize = mmap.Size();
+
+      MAP<uint32_t, uint8_t> bid_map;
+      // stock_code -> pair<bid_prices, ask_prices>
+      MAP<uint16_t, std::pair<SET<uint32_t>, SET<uint32_t>>> stock_prices;
+      uint32_t max_order_id = 0;
+      uint64_t offset = 0;
+      uint64_t order_cnt = 0;
+
+      while (offset < fsize) {
+         ++order_cnt;
+         auto msg_type = data[offset++];
+
+         switch (msg_type) {
+            case 'A':
+            case 'F': {
+               auto order = (ItchOrderAdd *) &data[offset];
+               if (order->order_id > max_order_id) max_order_id = order->order_id;
+               auto pair = &stock_prices[order->stock_code];
+               auto prices = order->bid ? &pair->first : &pair->second;
+               prices->insert(order->price);
+               bid_map[order->order_id] = order->bid;
+               offset += 23;
+               break;
+            }
+            case 'E':
+            case 'C':
+            case 'X':
+               offset += 18;
+               break;
+            case 'D':
+               offset += 14;
+               break;
+            case 'U': {
+               auto order = (ItchOrderReplace *) &data[offset];
+               if (order->new_order_id > max_order_id) max_order_id = order->new_order_id;
+               auto pair = &stock_prices[order->stock_code];
+               auto prices = bid_map[order->order_id] ? &pair->first : &pair->second;
+               prices->insert(order->price);
+               offset += 26;
+               break;
+            }
+            default:
+               throw std::runtime_error("unexpected msg_type at offset: " + std::to_string(offset - 1));
+         }
+      }
+
+      auto stop = nostromo::TimeUtils::Now();
+      auto elap = stop - start;
+      auto ops = order_cnt / (elap.count() / 1'000'000'000);
+
+      std::cout
+            << "CreateMetaData" << std::endl
+            << "order count: " << order_cnt << std::endl
+            << "elapsed: " << elap.count() << std::endl
+            << "orders/sec: " << ops << std::endl
+            << std::endl;
+
+      return std::make_pair(max_order_id, stock_prices);
+   }
+
+   static auto SortMetaData(MAP<uint16_t, std::pair<SET<uint32_t>, SET<uint32_t>>> &stock_prices) {
+      auto start = nostromo::TimeUtils::Now();
+
+      std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> sorted;
+
+      for (auto &[stock_code, pair]: stock_prices) {
+         std::set<uint32_t> bid_prices{pair.first.begin(), pair.first.end()};
+         std::set<uint32_t> ask_prices{pair.second.begin(), pair.second.end()};
+         sorted[stock_code] = std::make_pair(bid_prices, ask_prices);
+      }
+
+      auto stop = nostromo::TimeUtils::Now();
+      auto elap = stop - start;
+
+      std::cout
+            << "SortMetaData" << std::endl
+            << "elapsed: " << elap.count() << std::endl
+            << std::endl;
+
+      return sorted;
+   }
+
+   static void SaveMetaData(
+         uint32_t max_order_id,
+         std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> sorted) {
+
+   }
 
    static void SetBaseFields(ItchBase &order, ItchRawBase &itch) {
       order.stock_code = StockCode(itch.stock_code);
@@ -339,7 +314,7 @@ public:
    static void Read(
          boost::iostreams::filtering_istream &in,
          char *buf,
-         const std::streamsize n) {
+         std::streamsize n) {
       in.read(buf, n);
       if (in.gcount() != n) {
          throw nostromo::Error("read() failed", EX_INFO);
@@ -348,29 +323,29 @@ public:
 
    static void Write(
          std::ofstream &out,
-         const char msg_type,
-         const void *obj,
+         char msg_type,
+         void *obj,
          std::streamsize n) {
-      out.write((const char *) &msg_type, 1);
-      out.write((const char *) obj, n);
+      out.write((char *) &msg_type, 1);
+      out.write((char *) obj, n);
       if (out.fail()) {
          throw nostromo::Error("write() failed", EX_INFO);
       }
    }
 
-   static uint16_t StockCode(const __be16 stock_code) {
+   static uint16_t StockCode(__be16 stock_code) {
       return be16toh(stock_code);
    }
 
-   static uint32_t OrderId(const __be64 order_id) {
+   static uint32_t OrderId(__be64 order_id) {
       return static_cast<uint32_t>(be64toh(order_id));
    }
 
-   static uint32_t Quantity(const __be32 quantity) {
+   static uint32_t Quantity(__be32 quantity) {
       return be32toh(quantity);
    }
 
-   static uint32_t Price(const __be32 price) {
+   static uint32_t Price(__be32 price) {
       return be32toh(price);
    }
 
@@ -384,6 +359,21 @@ public:
              ((uint64_t) (timestamp[4]) << 8) |
              ((uint64_t) (timestamp[5]));
    }
+
+   static std::string RemoveExtension(std::string &path) {
+      auto pos = path.find_last_of('.');
+      if (pos <= 0) return path;
+      return path.substr(0, pos);
+   }
+
+public:
+   static void Run(std::string &fpath) {
+      std::cout << "processing: " << fpath << std::endl;
+      ParseRawFile(fpath);
+      auto [max_order_id, stock_prices] = CreateMetaData(fpath);
+      auto sorted = SortMetaData(stock_prices);
+      SaveMetaData(max_order_id, sorted);
+   }
 };
 
 } // namespace order_book::itch
@@ -392,17 +382,17 @@ int main() {
    using order_book::itch::ItchRawParser;
 
    std::cout.imbue(std::locale(""));
-   const std::string base_dir = "/remote/data/nasdaq-itch/";
+   std::string base_dir = "/remote/data/nasdaq-itch/";
 
-   const auto fnames = {
+   auto fnames = {
          "01302019.NASDAQ_ITCH50.gz",
          "01302020.NASDAQ_ITCH50.gz",
          "12302019.NASDAQ_ITCH50.gz"
    };
 
-   for (const auto &fname: fnames) {
-      const auto fpath = base_dir + fname;
-      ItchRawParser::Parse(fpath);
+   for (auto &fname: fnames) {
+      auto fpath = base_dir + fname;
+      ItchRawParser::Run(fpath);
    }
 
    return 0;

@@ -112,6 +112,7 @@ public:
    }
 
    void OrderReplace(const ItchOrderReplace &itch_order) {
+      std::cout << itch_order.order_id << std::endl;
       tmp_order_delete_.stock_code = itch_order.stock_code;
       tmp_order_delete_.timestamp = itch_order.timestamp;
       tmp_order_delete_.order_id = itch_order.order_id;
@@ -340,23 +341,23 @@ public:
    }
 
    void OrderAdd(const ItchOrderAdd &order) {
-      order_books_[order.stock_code].OrderAdd(order);
+      (&order_books_[order.stock_code])->OrderAdd(order);
    }
 
    void OrderExecuted(const ItchOrderExecuted &order) {
-      order_books_[order.stock_code].OrderExecuted(order);
+      (&order_books_[order.stock_code])->OrderExecuted(order);
    }
 
    void OrderCancel(const ItchOrderCancel &order) {
-      order_books_[order.stock_code].OrderCancel(order);
+      (&order_books_[order.stock_code])->OrderCancel(order);
    }
 
    void OrderDelete(const ItchOrderDelete &order) {
-      order_books_[order.stock_code].OrderDelete(order);
+      (&order_books_[order.stock_code])->OrderDelete(order);
    }
 
    void OrderReplace(const ItchOrderReplace &order) {
-      order_books_[order.stock_code].OrderReplace(order);
+      (&order_books_[order.stock_code])->OrderReplace(order);
    }
 };
 
