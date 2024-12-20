@@ -16,13 +16,11 @@ namespace order_book::itch {
 class ItchRawParser {
 private:
    static void ParseRawFile(std::string &in_path) {
-      auto start = nostromo::TimeUtils::Now();
-
       namespace io = boost::iostreams;
+      auto start = nostromo::TimeUtils::Now();
 
       auto base_fpath = RemoveExtension(in_path);
       std::ofstream out_bin(base_fpath + ".bin", std::ios_base::out | std::ios_base::binary);
-      std::ofstream out_csv(base_fpath + ".csv", std::ios_base::out);
 
       std::ifstream in(in_path, std::ios_base::in | std::ios_base::binary);
       io::filtering_istream filter;
@@ -214,7 +212,7 @@ private:
 
       auto in_path = RemoveExtension(fpath) + ".bin";
 
-      nostromo::Mmap<char> mmap{fpath};
+      nostromo::Mmap<char> mmap{in_path};
       auto data = mmap.Ptr();
       auto fsize = mmap.Size();
 
@@ -283,8 +281,10 @@ private:
       std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> sorted;
 
       for (auto &[stock_code, pair]: stock_prices) {
-         std::set<uint32_t> bid_prices{pair.first.begin(), pair.first.end()};
-         std::set<uint32_t> ask_prices{pair.second.begin(), pair.second.end()};
+         auto &bids = pair.first;
+         auto &asks = pair.second;
+         std::set<uint32_t> bid_prices{bids.begin(), bids.end()};
+         std::set<uint32_t> ask_prices{asks.begin(), asks.end()};
          sorted[stock_code] = std::make_pair(bid_prices, ask_prices);
       }
 
@@ -300,9 +300,31 @@ private:
    }
 
    static void SaveMetaData(
+         std::string &in_path,
          uint32_t max_order_id,
-         std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> sorted) {
+         std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> &stock_prices) {
+      auto base_fpath = RemoveExtension(in_path);
+      std::ofstream out_bin(base_fpath + ".meta", std::ios_base::out | std::ios_base::binary);
 
+      out_bin.write((char *) &max_order_id, sizeof(max_order_id));
+
+      for (auto &[stock_code, pair]: stock_prices) {
+         out_bin.write((const char *) &stock_code, sizeof(stock_code));
+         WritePrices(out_bin, pair.first);
+         WritePrices(out_bin, pair.second);
+      }
+   }
+
+   static void WritePrices(std::ofstream &out, std::set<uint32_t> &prices) {
+      auto ask_cnt = prices.size();
+      out.write((char *) &ask_cnt, sizeof(ask_cnt));
+      for (auto ask: prices) {
+         out.write((char *) &ask, sizeof(ask));
+      }
+
+      if (out.fail()) {
+         throw nostromo::Error("write() failed", EX_INFO);
+      }
    }
 
    static void SetBaseFields(ItchBase &order, ItchRawBase &itch) {
@@ -372,7 +394,7 @@ public:
       ParseRawFile(fpath);
       auto [max_order_id, stock_prices] = CreateMetaData(fpath);
       auto sorted = SortMetaData(stock_prices);
-      SaveMetaData(max_order_id, sorted);
+      SaveMetaData(fpath, max_order_id, sorted);
    }
 };
 

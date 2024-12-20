@@ -92,9 +92,9 @@ public:
       auto data = mmap.Ptr();
       auto fsize = mmap.Size();
 
-      auto [max_order_id, stock_prices] = CreateMetaData(data, fsize);
-      auto stock_prices_sorted = SortMetaData(stock_prices);
-      RunPerfTest(data, fsize, max_order_id, stock_prices_sorted);
+//      auto [max_order_id, stock_prices] = CreateMetaData(data, fsize);
+//      auto stock_prices_sorted = SortMetaData(stock_prices);
+//      RunPerfTest(data, fsize, max_order_id, stock_prices_sorted);
    }
 };
 
