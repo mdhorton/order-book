@@ -12,3 +12,12 @@ target_link_libraries(
         ${ZLIB_LIBRARIES}
         ${EXTERNAL_DEPENDENCY_DIR}/boost/current/install/lib/libboost_iostreams.so
 )
+
+add_executable(
+        metadata_creator
+        metadata_creator.cpp
+)
+
+target_link_libraries(
+        metadata_creator
+)

@@ -17,12 +17,13 @@
 #define MAP boost::unordered_flat_map
 #define SET boost::unordered_flat_set
 
+//#define MAP std::map
+//#define SET std::set
+
 namespace order_book::itch::v02 {
 
 class OrderBook {
    std::span<Order> orders_;
-   const size_t bid_price_cnt;
-   const size_t ask_price_cnt;
 
    std::vector<PriceLevel> bid_levels_{};
    std::vector<PriceLevel> ask_levels_{};
@@ -38,37 +39,30 @@ class OrderBook {
 public:
    OrderBook(
          std::span<Order> orders,
-         const std::set<uint32_t> &bid_prices,
-         const std::set<uint32_t> &ask_prices) :
-         orders_{orders},
-         bid_price_cnt{bid_prices.size()},
-         ask_price_cnt{ask_prices.size()} {
-      {
-         bid_levels_.reserve(bid_price_cnt);
-         uint16_t idx = 0;
+         std::set<uint32_t> &bid_prices,
+         std::set<uint32_t> &ask_prices) :
+         orders_{orders} {
+      InitializePrices(bid_levels_, bid_prices, bid_price_map_);
+      InitializePrices(ask_levels_, ask_prices, ask_price_map_);
+   }
 
-         for (auto price: bid_prices) {
-            bid_levels_.emplace_back();
-            auto tmp = &bid_levels_[idx];
-            tmp->price = price;
-            tmp->idx = idx;
-            bid_price_map_[price] = tmp;
-            ++idx;
-         }
+   static void InitializePrices(
+         std::vector<PriceLevel> &price_levels,
+         std::set<uint32_t> &prices,
+         MAP<uint32_t, PriceLevel *> &price_map) {
+      price_levels.reserve(prices.size());
+
+      uint16_t idx = 0;
+      for (auto price: prices) {
+         PriceLevel level{};
+         level.price = price;
+         level.idx = idx;
+         price_levels.push_back(level);
+         ++idx;
       }
 
-      {
-         ask_levels_.reserve(ask_price_cnt);
-         uint16_t idx = 0;
-
-         for (auto price: ask_prices) {
-            ask_levels_.emplace_back();
-            auto tmp = &ask_levels_[idx];
-            tmp->price = price;
-            tmp->idx = idx;
-            ask_price_map_[price] = tmp;
-            ++idx;
-         }
+      for (auto &level: price_levels) {
+         price_map[level.price] = &level;
       }
    }
 
@@ -112,7 +106,6 @@ public:
    }
 
    void OrderReplace(const ItchOrderReplace &itch_order) {
-      std::cout << itch_order.order_id << std::endl;
       tmp_order_delete_.stock_code = itch_order.stock_code;
       tmp_order_delete_.timestamp = itch_order.timestamp;
       tmp_order_delete_.order_id = itch_order.order_id;
@@ -227,7 +220,7 @@ private:
       // this price level is now empty.
       // do we need a new best bid?
       if (order->bid) {
-         assert(bid_price_cnt > 0);
+         assert(!bid_levels_.empty());
          if (price_level->price != best_bid_) {
             return;
          }
@@ -252,7 +245,7 @@ private:
       }
 
       // do we need a new best ask?
-      assert(ask_price_cnt > 0);
+      assert(!ask_levels_.empty());
       if (price_level->price != best_ask_) {
          return;
       }
@@ -262,7 +255,7 @@ private:
          return;
       }
 
-      assert(order->price_idx < ask_price_cnt - 1);
+      assert(order->price_idx < ask_levels_.size() - 1);
 
       auto price_idx = order->price_idx + 1;
       while (true) {
@@ -271,7 +264,7 @@ private:
             best_ask_ = pl->price;
             return;
          }
-         assert(order->price_idx < ask_price_cnt - 1);
+         assert(order->price_idx < ask_levels_.size() - 1);
          ++price_idx;
       }
    }
@@ -317,25 +310,21 @@ class OrderBooks {
    std::vector<OrderBook> order_books_{};
 
 public:
-   OrderBooks(
-         const uint32_t max_order_id,
-         const std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> &stock_prices) {
+   OrderBooks(uint32_t max_order_id, auto &stock_prices) {
       orders_.reserve(max_order_id + 1);
 
-      for (uint32_t x = 0; x <= max_order_id; ++x) {
+      for (auto order_id = 0u; order_id <= max_order_id; ++order_id) {
          orders_.emplace_back();
       }
 
-      const uint16_t max_stock_id = stock_prices.rbegin()->first;
+      auto max_stock_id = stock_prices.rbegin()->first;
       order_books_.reserve(max_stock_id + 1);
 
-      for (uint16_t idx = 0; idx <= max_stock_id; ++idx) {
-         auto res = stock_prices.find(idx);
-         if (res == stock_prices.end()) {
-            order_books_.emplace_back(orders_, std::set<uint32_t>{}, std::set<uint32_t>{});
-            continue;
-         }
-         auto pair = res->second;
+      auto empty_prices = std::make_pair(std::set<uint32_t>{}, std::set<uint32_t>{});
+
+      for (auto stock_code = 0u; stock_code <= max_stock_id; ++stock_code) {
+         auto res = stock_prices.find(stock_code);
+         auto pair = res == stock_prices.end() ? empty_prices : res->second;
          order_books_.emplace_back(orders_, pair.first, pair.second);
       }
    }
