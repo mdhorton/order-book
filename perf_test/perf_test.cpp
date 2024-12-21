@@ -63,7 +63,7 @@ private:
 
       auto [max_order_id, stock_prices] = ImportMetaData(fpath);
 
-      nostromo::Mmap<char> mmap{fpath, nostromo::HugePageUtils::SIZE_2MB};
+      nostromo::Mmap<char> mmap{fpath};
       auto data = mmap.Ptr();
       auto fsize = mmap.Size();
 
@@ -74,7 +74,6 @@ private:
 
       while (offset < fsize) {
          ++order_cnt;
-
          auto msg_type = data[offset++];
 
          switch (msg_type) {
@@ -149,7 +148,7 @@ int main() {
    std::string base_dir = "/remote/data/nasdaq-itch/";
 
    auto fnames = {
-//         "01302019.NASDAQ_ITCH50.bin",
+         "01302019.NASDAQ_ITCH50.bin",
 //         "01302020.NASDAQ_ITCH50.bin",
          "12302019.NASDAQ_ITCH50.bin"
    };

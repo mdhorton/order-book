@@ -10,15 +10,14 @@
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
 
+#include "nostromo/mmap.hpp"
+
 #include "common.hpp"
 #include "itch/itch.hpp"
 #include "itch/v02/model.hpp"
 
 #define MAP boost::unordered_flat_map
 #define SET boost::unordered_flat_set
-
-//#define MAP std::map
-//#define SET std::set
 
 namespace order_book::itch::v02 {
 
@@ -306,26 +305,25 @@ private:
 };
 
 class OrderBooks {
-   std::vector<Order> orders_{};
-   std::vector<OrderBook> order_books_{};
+   std::span<Order> orders_{};
+   std::span<OrderBook> order_books_{};
 
 public:
    OrderBooks(uint32_t max_order_id, auto &stock_prices) {
-      orders_.reserve(max_order_id + 1);
-
-      for (auto order_id = 0u; order_id <= max_order_id; ++order_id) {
-         orders_.emplace_back();
-      }
+      nostromo::Mmap<Order> orders{(max_order_id + 1) * sizeof(Order), nostromo::HugePageUtils::SIZE_1GB};
+      orders_ = std::span<Order>{orders.Ptr(), orders.Size()};
 
       auto max_stock_id = stock_prices.rbegin()->first;
-      order_books_.reserve(max_stock_id + 1);
+      nostromo::Mmap<OrderBook> order_books{(max_order_id + 1) * sizeof(Order), nostromo::HugePageUtils::SIZE_1GB};
+      order_books_ = std::span<OrderBook>{order_books.Ptr(), order_books.Size()};
 
       auto empty_prices = std::make_pair(std::set<uint32_t>{}, std::set<uint32_t>{});
 
       for (auto stock_code = 0u; stock_code <= max_stock_id; ++stock_code) {
          auto res = stock_prices.find(stock_code);
          auto pair = res == stock_prices.end() ? empty_prices : res->second;
-         order_books_.emplace_back(orders_, pair.first, pair.second);
+         auto addr = order_books[]
+         new (10) OrderBook(orders_, pair.first, pair.second);
       }
    }
 
