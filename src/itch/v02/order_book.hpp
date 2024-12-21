@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cassert>
 #include <span>
-#include <map>
 #include <set>
 
 #include <boost/unordered/unordered_flat_map.hpp>
@@ -322,8 +321,8 @@ public:
       for (auto stock_code = 0u; stock_code <= max_stock_id; ++stock_code) {
          auto res = stock_prices.find(stock_code);
          auto pair = res == stock_prices.end() ? empty_prices : res->second;
-         auto addr = order_books[]
-         new (10) OrderBook(orders_, pair.first, pair.second);
+         auto addr = &order_books_[stock_code];
+         new (addr) OrderBook(orders_, pair.first, pair.second);
       }
    }
 

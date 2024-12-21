@@ -148,7 +148,7 @@ int main() {
    std::string base_dir = "/remote/data/nasdaq-itch/";
 
    auto fnames = {
-         "01302019.NASDAQ_ITCH50.bin",
+         // "01302019.NASDAQ_ITCH50.bin",
 //         "01302020.NASDAQ_ITCH50.bin",
          "12302019.NASDAQ_ITCH50.bin"
    };
