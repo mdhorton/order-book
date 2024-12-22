@@ -1,11 +1,14 @@
 #include <fstream>
 #include <iostream>
+#include <map>
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
 
 #include "itch/itch.hpp"
 #include "itch/v02/order_book.hpp"
+
+#define SET boost::unordered_flat_set
 
 namespace order_book::itch {
 

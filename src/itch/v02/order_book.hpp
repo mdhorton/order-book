@@ -16,7 +16,6 @@
 #include "itch/v02/model.hpp"
 
 #define MAP boost::unordered_flat_map
-#define SET boost::unordered_flat_set
 
 namespace order_book::itch::v02 {
 
@@ -313,7 +312,7 @@ public:
       orders_ = std::span<Order>{orders.Ptr(), orders.Size()};
 
       auto max_stock_id = stock_prices.rbegin()->first;
-      nostromo::Mmap<OrderBook> order_books{(max_order_id + 1) * sizeof(Order), nostromo::HugePageUtils::SIZE_1GB};
+      nostromo::Mmap<OrderBook> order_books{(max_stock_id + 1) * sizeof(OrderBook), nostromo::HugePageUtils::SIZE_1GB};
       order_books_ = std::span<OrderBook>{order_books.Ptr(), order_books.Size()};
 
       auto empty_prices = std::make_pair(std::set<uint32_t>{}, std::set<uint32_t>{});

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <set>
+#include <map>
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
