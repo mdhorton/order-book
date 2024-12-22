@@ -5,8 +5,8 @@
 #include "nostromo/time_utils.hpp"
 
 #include "utils.hpp"
+#include "itch/types.hpp"
 #include "itch/itch.hpp"
-#include "itch/v02/order_book.hpp"
 
 namespace order_book::itch {
 
@@ -70,7 +70,9 @@ private:
 
       auto stop = nostromo::TimeUtils::Now();
       auto elap = stop - start;
-      auto ops = order_cnt / (elap.count() / 1'000'000'000);
+      auto ops = static_cast<uint64_t>(
+            static_cast<double>(order_cnt) /
+            (static_cast<double>(elap.count()) / 1'000'000'000));
 
       std::cout
             << "CreateMetaData" << std::endl
@@ -128,8 +130,6 @@ public:
 } // namespace order_book::itch
 
 int main() {
-   using order_book::itch::OrderSorter;
-
    std::cout.imbue(std::locale(""));
    std::string base_dir = "/remote/data/nasdaq-itch/";
 
@@ -141,7 +141,7 @@ int main() {
 
    for (auto &fname: fnames) {
       auto fpath = base_dir + fname;
-      OrderSorter::Run(fpath);
+      order_book::itch::OrderSorter::Run(fpath);
    }
 
    return 0;

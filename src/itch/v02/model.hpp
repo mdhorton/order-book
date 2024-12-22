@@ -6,7 +6,7 @@
 namespace order_book::itch::v02 {
 
 // 32 bytes
-struct Order {
+struct alignas(32) Order {
    uint64_t timestamp;
    uint32_t order_id;
    uint32_t quantity;
@@ -17,7 +17,7 @@ struct Order {
 };
 
 // 16 bytes
-struct PriceLevel {
+struct alignas(16) PriceLevel {
    uint32_t price;
    uint32_t quantity;
    uint16_t order_count;

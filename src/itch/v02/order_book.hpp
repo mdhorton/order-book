@@ -12,10 +12,9 @@
 #include "nostromo/mmap.hpp"
 
 #include "common.hpp"
+#include "itch/types.hpp"
 #include "itch/itch.hpp"
 #include "itch/v02/model.hpp"
-
-#define MAP boost::unordered_flat_map
 
 namespace order_book::itch::v02 {
 
@@ -303,23 +302,25 @@ private:
 };
 
 class OrderBooks {
-   nostromo::Mmap<Order> orders_mmap_;
-   nostromo::Mmap<OrderBook> order_books_mmap_;
-   std::span<Order> orders_;
-   std::span<OrderBook> order_books_;
+private:
+   const nostromo::Mmap<Order> orders_mmap_;
+   const nostromo::Mmap<OrderBook> order_books_mmap_;
+   const std::span<Order> orders_;
+   const std::span<OrderBook> order_books_;
 
 public:
-   OrderBooks(
+   explicit OrderBooks(
          uint32_t max_order_id,
+         uint16_t max_stock_code,
          auto &stock_prices,
-         size_t huge_size = nostromo::HugePageUtils::SIZE_4KB)
-         : orders_mmap_{max_order_id + 1, huge_size},
-           order_books_mmap_{stock_prices.rbegin()->first, 1, huge_size},
+         size_t page_size)
+         : orders_mmap_{max_order_id + 1u, page_size},
+           order_books_mmap_{max_stock_code + 1u, page_size},
            orders_{orders_mmap_.Span()},
            order_books_{order_books_mmap_.Span()} {
       auto empty_prices = std::make_pair(std::set<uint32_t>{}, std::set<uint32_t>{});
 
-      for (auto stock_code = 0u; stock_code <= stock_prices.rbegin()->first; ++stock_code) {
+      for (auto stock_code = 0u; stock_code <= max_stock_code; ++stock_code) {
          auto res = stock_prices.find(stock_code);
          auto pair = res == stock_prices.end() ? empty_prices : res->second;
          auto addr = &order_books_[stock_code];

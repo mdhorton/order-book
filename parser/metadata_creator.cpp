@@ -1,15 +1,14 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <set>
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
 
 #include "utils.hpp"
+#include "itch/types.hpp"
 #include "itch/itch.hpp"
-#include "itch/v02/order_book.hpp"
-
-#define SET boost::unordered_flat_set
 
 namespace order_book::itch {
 
@@ -24,6 +23,7 @@ private:
       MAP<uint32_t, uint8_t> bid_map;
       // stock_code -> pair<bid_prices, ask_prices>
       MAP<uint16_t, std::pair<SET<uint32_t>, SET<uint32_t>>> stock_prices;
+
       uint32_t max_order_id = 0;
       uint16_t max_stock_code = 0;
       uint64_t offset = 0;
@@ -36,7 +36,7 @@ private:
          switch (msg_type) {
             case 'A':
             case 'F': {
-               auto order = (ItchOrderAdd *) &data[offset];
+               auto order = reinterpret_cast<ItchOrderAdd *>(&data[offset]);
                if (order->order_id > max_order_id) max_order_id = order->order_id;
                if (order->stock_code > max_stock_code) max_stock_code = order->stock_code;
 
@@ -59,7 +59,7 @@ private:
                break;
             }
             case 'U': {
-               auto order = (ItchOrderReplace *) &data[offset];
+               auto order = reinterpret_cast<ItchOrderReplace *>(&data[offset]);
                if (order->order_id > max_order_id) max_order_id = order->order_id;
                if (order->stock_code > max_stock_code) max_stock_code = order->stock_code;
 
@@ -79,7 +79,9 @@ private:
 
       auto stop = nostromo::TimeUtils::Now();
       auto elap = stop - start;
-      auto ops = order_cnt / (elap.count() / 1'000'000'000);
+      auto ops = static_cast<uint64_t>(
+            static_cast<double>(order_cnt) /
+            (static_cast<double>(elap.count()) / 1'000'000'000));
 
       std::cout
             << "CreateMetaData" << std::endl
@@ -95,13 +97,13 @@ private:
    static auto SortStockPrices(auto &stock_prices) {
       auto start = nostromo::TimeUtils::Now();
 
-      std::map<uint16_t, std::pair<std::vector<uint32_t>, std::vector<uint32_t>>> sorted;
+      std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> sorted;
 
       for (auto &[stock_code, pair]: stock_prices) {
          auto &bids = pair.first;
          auto &asks = pair.second;
-         std::vector<uint32_t> bid_prices{bids.begin(), bids.end()};
-         std::vector<uint32_t> ask_prices{asks.begin(), asks.end()};
+         std::set<uint32_t> bid_prices{bids.begin(), bids.end()};
+         std::set<uint32_t> ask_prices{asks.begin(), asks.end()};
          sorted[stock_code] = std::make_pair(bid_prices, ask_prices);
       }
 
@@ -124,21 +126,21 @@ private:
       auto start = nostromo::TimeUtils::Now();
 
       auto out_path = Utils::RemoveExtension(fpath) + ".meta";
-      std::ofstream out_bin(out_path, std::ios_base::out | std::ios_base::binary);
+      std::ofstream out(out_path, std::ios_base::out | std::ios_base::binary);
 
-      out_bin.write((char *) &max_order_id, sizeof(max_order_id));
-      out_bin.write((char *) &max_stock_code, sizeof(max_stock_code));
+      out.write(reinterpret_cast<char *>(&max_order_id), sizeof(max_order_id));
+      out.write(reinterpret_cast<char *>(&max_stock_code), sizeof(max_stock_code));
 
       auto stock_cnt = stock_prices.size();
-      out_bin.write((char *) &stock_cnt, sizeof(stock_cnt));
+      out.write(reinterpret_cast<char *>(&stock_cnt), sizeof(stock_cnt));
 
       for (auto &[stock_code, pair]: stock_prices) {
-         out_bin.write((const char *) &stock_code, sizeof(stock_code));
-         WritePrices(out_bin, pair.first);
-         WritePrices(out_bin, pair.second);
+         out.write(reinterpret_cast<const char *>(&stock_code), sizeof(stock_code));
+         WritePrices(out, pair.first);
+         WritePrices(out, pair.second);
       }
 
-      if (out_bin.fail()) {
+      if (out.fail()) {
          throw nostromo::Error("write() failed", EX_INFO);
       }
 
@@ -153,9 +155,9 @@ private:
 
    static void WritePrices(std::ofstream &out, auto &prices) {
       auto price_cnt = prices.size();
-      out.write((char *) &price_cnt, sizeof(price_cnt));
+      out.write(reinterpret_cast<char *>(&price_cnt), sizeof(price_cnt));
       for (auto price: prices) {
-         out.write((char *) &price, sizeof(price));
+         out.write(reinterpret_cast<char *>(&price), sizeof(price));
       }
    }
 
@@ -172,20 +174,18 @@ public:
 } // namespace order_book::itch
 
 int main() {
-   using order_book::itch::MetadataCreator;
-
    std::cout.imbue(std::locale(""));
    std::string base_dir = "/remote/data/nasdaq-itch/";
 
    auto fnames = {
-         "01302019.NASDAQ_ITCH50.bin",
-         "01302020.NASDAQ_ITCH50.bin",
-         "12302019.NASDAQ_ITCH50.bin"
+         "01302019.NASDAQ_ITCH50.sorted-bin",
+         "01302020.NASDAQ_ITCH50.sorted-bin",
+         "12302019.NASDAQ_ITCH50.sorted-bin"
    };
 
    for (auto &fname: fnames) {
       auto fpath = base_dir + fname;
-      MetadataCreator::Run(fpath);
+      order_book::itch::MetadataCreator::Run(fpath);
    }
 
    return 0;

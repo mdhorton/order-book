@@ -16,10 +16,11 @@ class ItchRawParser {
 private:
    static void ParseRawFile(std::string &in_path) {
       namespace io = boost::iostreams;
+
       auto start = nostromo::TimeUtils::Now();
 
-      auto base_fpath = RemoveExtension(in_path);
-      std::ofstream out_bin(base_fpath + ".bin", std::ios_base::out | std::ios_base::binary);
+      auto out_path = RemoveExtension(in_path) + ".bin";
+      std::ofstream out_bin(out_path, std::ios_base::out | std::ios_base::binary);
 
       std::ifstream in(in_path, std::ios_base::in | std::ios_base::binary);
       io::filtering_istream filter;
@@ -139,7 +140,9 @@ private:
 
       auto stop = nostromo::TimeUtils::Now();
       auto elap = stop - start;
-      auto ops = order_cnt / (elap.count() / 1'000'000'000);
+      auto ops = static_cast<uint64_t>(
+            static_cast<double>(order_cnt) /
+            (static_cast<double>(elap.count()) / 1'000'000'000));
 
       std::cout
             << "ParseRawFile" << std::endl

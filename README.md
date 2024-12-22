@@ -13,11 +13,11 @@ price_maps -> boost::unordered_flat_map
 orders/sec: 10.1 M
 
 version 2.2
-orders_ -> huge pages 2MB
+orders -> huge pages 2MB
 orders/sec: 12.7 M
 
 version 2.3
-orders_ -> huge pages 1GB
+orders -> huge pages 1GB
 orders/sec: 13.3 M
 
 version 2.4

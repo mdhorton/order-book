@@ -3,12 +3,12 @@
 #include <string>
 #include <iostream>
 #include <fstream>
-#include <set>
 #include <map>
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
 
+#include "utils.hpp"
 #include "itch/itch.hpp"
 #include "itch/v02/order_book.hpp"
 
@@ -37,11 +37,13 @@ private:
    }
 
    static auto ImportMetaData(std::string &fpath) {
-      auto in_path = RemoveExtension(fpath) + ".meta";
+      auto in_path = Utils::RemoveExtension(fpath) + ".meta";
       std::ifstream in(in_path, std::ios_base::in | std::ios_base::binary);
 
       auto max_order_id = ReadInt<uint32_t>(in);
+      auto max_stock_code = ReadInt<uint16_t>(in);
       auto stock_cnt = ReadInt<size_t>(in);
+
       std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> stock_prices;
 
       for (auto idx = 0u; idx < stock_cnt; ++idx) {
@@ -51,22 +53,20 @@ private:
          stock_prices[stock_code] = std::make_pair(bids, asks);
       }
 
-      return std::make_pair(max_order_id, stock_prices);
+      return std::make_tuple(max_order_id, max_stock_code, stock_prices);
    }
 
    static auto RunPerfTest(std::string &fpath) {
       auto start = nostromo::TimeUtils::Now();
 
-      auto [max_order_id, stock_prices] = ImportMetaData(fpath);
+      auto [max_order_id, max_stock_code, stock_prices]
+            = ImportMetaData(fpath);
 
       auto page_size = nostromo::HugePageUtils::SIZE_1GB;
-      nostromo::Mmap<Order> orders{max_order_id, page_size};
-      nostromo::Mmap<OrderBook> order_books{max_order_id, page_size};
+      OrderBooks books{max_order_id, max_stock_code, stock_prices, page_size};
 
       nostromo::Mmap<char> mmap{fpath};
       auto data = mmap.Span();
-
-      OrderBooks books{max_order_id, stock_prices};
 
       uint64_t offset = 0;
       uint64_t order_cnt = 0;
@@ -115,7 +115,9 @@ private:
 
       auto stop = nostromo::TimeUtils::Now();
       auto elap = stop - start;
-      auto ops = order_cnt / (elap.count() / 1'000'000'000);
+      auto ops = static_cast<uint64_t>(
+            static_cast<double>(order_cnt) /
+            (static_cast<double>(elap.count()) / 1'000'000'000));
       auto npo = elap.count() / order_cnt;
 
       std::cout
@@ -125,12 +127,6 @@ private:
             << "orders/sec: " << ops << std::endl
             << "nanos/order: " << npo << std::endl
             << std::endl;
-   }
-
-   static std::string RemoveExtension(std::string &path) {
-      auto pos = path.find_last_of('.');
-      if (pos <= 0) return path;
-      return path.substr(0, pos);
    }
 
 public:
@@ -149,8 +145,8 @@ int main() {
    std::string base_dir = "/remote/data/nasdaq-itch/";
 
    auto fnames = {
-         // "01302019.NASDAQ_ITCH50.bin",
-//         "01302020.NASDAQ_ITCH50.bin",
+         "01302019.NASDAQ_ITCH50.sorted-bin",
+         "01302020.NASDAQ_ITCH50.sorted-bin",
          "12302019.NASDAQ_ITCH50.sorted-bin"
    };
 
