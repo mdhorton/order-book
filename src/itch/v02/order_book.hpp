@@ -303,25 +303,27 @@ private:
 };
 
 class OrderBooks {
-   std::span<Order> orders_{};
-   std::span<OrderBook> order_books_{};
+   nostromo::Mmap<Order> orders_mmap_;
+   nostromo::Mmap<OrderBook> order_books_mmap_;
+   std::span<Order> orders_;
+   std::span<OrderBook> order_books_;
 
 public:
-   OrderBooks(uint32_t max_order_id, auto &stock_prices) {
-      nostromo::Mmap<Order> orders{(max_order_id + 1) * sizeof(Order), nostromo::HugePageUtils::SIZE_1GB};
-      orders_ = std::span<Order>{orders.Ptr(), orders.Size()};
-
-      auto max_stock_id = stock_prices.rbegin()->first;
-      nostromo::Mmap<OrderBook> order_books{(max_stock_id + 1) * sizeof(OrderBook), nostromo::HugePageUtils::SIZE_1GB};
-      order_books_ = std::span<OrderBook>{order_books.Ptr(), order_books.Size()};
-
+   OrderBooks(
+         uint32_t max_order_id,
+         auto &stock_prices,
+         size_t huge_size = nostromo::HugePageUtils::SIZE_4KB)
+         : orders_mmap_{max_order_id + 1, huge_size},
+           order_books_mmap_{stock_prices.rbegin()->first, 1, huge_size},
+           orders_{orders_mmap_.Span()},
+           order_books_{order_books_mmap_.Span()} {
       auto empty_prices = std::make_pair(std::set<uint32_t>{}, std::set<uint32_t>{});
 
-      for (auto stock_code = 0u; stock_code <= max_stock_id; ++stock_code) {
+      for (auto stock_code = 0u; stock_code <= stock_prices.rbegin()->first; ++stock_code) {
          auto res = stock_prices.find(stock_code);
          auto pair = res == stock_prices.end() ? empty_prices : res->second;
          auto addr = &order_books_[stock_code];
-         new (addr) OrderBook(orders_, pair.first, pair.second);
+         new(addr) OrderBook(orders_, pair.first, pair.second);
       }
    }
 

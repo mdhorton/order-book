@@ -51,11 +51,6 @@ private:
          stock_prices[stock_code] = std::make_pair(bids, asks);
       }
 
-      std::cout
-            << "stock max_order_id: " << max_order_id << std::endl
-            << "stock_cnt: " << stock_cnt << std::endl
-            << "stock_price_cnt: " << stock_prices.size() << std::endl;
-
       return std::make_pair(max_order_id, stock_prices);
    }
 
@@ -64,16 +59,19 @@ private:
 
       auto [max_order_id, stock_prices] = ImportMetaData(fpath);
 
+      auto page_size = nostromo::HugePageUtils::SIZE_1GB;
+      nostromo::Mmap<Order> orders{max_order_id, page_size};
+      nostromo::Mmap<OrderBook> order_books{max_order_id, page_size};
+
       nostromo::Mmap<char> mmap{fpath};
-      auto data = mmap.Ptr();
-      auto fsize = mmap.Size();
+      auto data = mmap.Span();
 
       OrderBooks books{max_order_id, stock_prices};
 
       uint64_t offset = 0;
       uint64_t order_cnt = 0;
 
-      while (offset < fsize) {
+      while (offset < data.size()) {
          ++order_cnt;
          auto msg_type = data[offset++];
 
@@ -118,12 +116,14 @@ private:
       auto stop = nostromo::TimeUtils::Now();
       auto elap = stop - start;
       auto ops = order_cnt / (elap.count() / 1'000'000'000);
+      auto npo = elap.count() / order_cnt;
 
       std::cout
             << "RunPerfTest" << std::endl
             << "order count: " << order_cnt << std::endl
             << "elapsed: " << elap.count() << std::endl
             << "orders/sec: " << ops << std::endl
+            << "nanos/order: " << npo << std::endl
             << std::endl;
    }
 
@@ -151,7 +151,7 @@ int main() {
    auto fnames = {
          // "01302019.NASDAQ_ITCH50.bin",
 //         "01302020.NASDAQ_ITCH50.bin",
-         "12302019.NASDAQ_ITCH50.bin"
+         "12302019.NASDAQ_ITCH50.sorted-bin"
    };
 
    for (auto &fname: fnames) {

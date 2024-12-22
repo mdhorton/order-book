@@ -231,7 +231,7 @@ private:
          char msg_type,
          void *obj,
          std::streamsize n) {
-      out.write((char *) &msg_type, 1);
+      out.write((char *) &msg_type, sizeof(msg_type));
       out.write((char *) obj, n);
    }
 

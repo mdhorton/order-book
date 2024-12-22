@@ -5,6 +5,7 @@
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
 
+#include "utils.hpp"
 #include "itch/itch.hpp"
 #include "itch/v02/order_book.hpp"
 
@@ -18,17 +19,17 @@ private:
       auto start = nostromo::TimeUtils::Now();
 
       nostromo::Mmap<char> mmap{fpath};
-      auto data = mmap.Ptr();
-      auto fsize = mmap.Size();
+      auto data = mmap.Span();
 
       MAP<uint32_t, uint8_t> bid_map;
       // stock_code -> pair<bid_prices, ask_prices>
       MAP<uint16_t, std::pair<SET<uint32_t>, SET<uint32_t>>> stock_prices;
       uint32_t max_order_id = 0;
+      uint16_t max_stock_code = 0;
       uint64_t offset = 0;
       uint64_t order_cnt = 0;
 
-      while (offset < fsize) {
+      while (offset < data.size()) {
          ++order_cnt;
          auto msg_type = data[offset++];
 
@@ -36,9 +37,8 @@ private:
             case 'A':
             case 'F': {
                auto order = (ItchOrderAdd *) &data[offset];
-               if (order->order_id > max_order_id) {
-                  max_order_id = order->order_id;
-               }
+               if (order->order_id > max_order_id) max_order_id = order->order_id;
+               if (order->stock_code > max_stock_code) max_stock_code = order->stock_code;
 
                auto &pair = stock_prices[order->stock_code];
                auto &prices = order->bid ? pair.first : pair.second;
@@ -60,9 +60,8 @@ private:
             }
             case 'U': {
                auto order = (ItchOrderReplace *) &data[offset];
-               if (order->new_order_id > max_order_id) {
-                  max_order_id = order->new_order_id;
-               }
+               if (order->order_id > max_order_id) max_order_id = order->order_id;
+               if (order->stock_code > max_stock_code) max_stock_code = order->stock_code;
 
                auto bid = bid_map[order->order_id];
                auto &pair = stock_prices[order->stock_code];
@@ -90,19 +89,19 @@ private:
             << "orders/sec: " << ops << std::endl
             << std::endl;
 
-      return std::make_pair(max_order_id, stock_prices);
+      return std::make_tuple(max_order_id, max_stock_code, stock_prices);
    }
 
-   static auto SortMetaData(auto &stock_prices) {
+   static auto SortStockPrices(auto &stock_prices) {
       auto start = nostromo::TimeUtils::Now();
 
-      std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> sorted;
+      std::map<uint16_t, std::pair<std::vector<uint32_t>, std::vector<uint32_t>>> sorted;
 
       for (auto &[stock_code, pair]: stock_prices) {
          auto &bids = pair.first;
          auto &asks = pair.second;
-         std::set<uint32_t> bid_prices{bids.begin(), bids.end()};
-         std::set<uint32_t> ask_prices{asks.begin(), asks.end()};
+         std::vector<uint32_t> bid_prices{bids.begin(), bids.end()};
+         std::vector<uint32_t> ask_prices{asks.begin(), asks.end()};
          sorted[stock_code] = std::make_pair(bid_prices, ask_prices);
       }
 
@@ -110,7 +109,7 @@ private:
       auto elap = stop - start;
 
       std::cout
-            << "SortMetaData" << std::endl
+            << "SortStockPrices" << std::endl
             << "elapsed: " << elap.count() << std::endl
             << std::endl;
 
@@ -120,13 +119,15 @@ private:
    static void ExportMetaData(
          std::string &fpath,
          uint32_t max_order_id,
+         uint16_t max_stock_code,
          auto &stock_prices) {
       auto start = nostromo::TimeUtils::Now();
 
-      auto in_path = RemoveExtension(fpath) + ".meta";
-      std::ofstream out_bin(in_path, std::ios_base::out | std::ios_base::binary);
+      auto out_path = Utils::RemoveExtension(fpath) + ".meta";
+      std::ofstream out_bin(out_path, std::ios_base::out | std::ios_base::binary);
 
       out_bin.write((char *) &max_order_id, sizeof(max_order_id));
+      out_bin.write((char *) &max_stock_code, sizeof(max_stock_code));
 
       auto stock_cnt = stock_prices.size();
       out_bin.write((char *) &stock_cnt, sizeof(stock_cnt));
@@ -150,7 +151,7 @@ private:
             << std::endl;
    }
 
-   static void WritePrices(std::ofstream &out, std::set<uint32_t> &prices) {
+   static void WritePrices(std::ofstream &out, auto &prices) {
       auto price_cnt = prices.size();
       out.write((char *) &price_cnt, sizeof(price_cnt));
       for (auto price: prices) {
@@ -158,18 +159,13 @@ private:
       }
    }
 
-   static std::string RemoveExtension(std::string &path) {
-      auto pos = path.find_last_of('.');
-      if (pos <= 0) return path;
-      return path.substr(0, pos);
-   }
-
 public:
    static void Run(std::string &fpath) {
       std::cout << "processing: " << fpath << std::endl;
-      auto [max_order_id, stock_prices] = CreateMetaData(fpath);
-      auto sorted = SortMetaData(stock_prices);
-      ExportMetaData(fpath, max_order_id, sorted);
+      auto [max_order_id, max_stock_code, stock_prices] =
+            CreateMetaData(fpath);
+      auto sorted = SortStockPrices(stock_prices);
+      ExportMetaData(fpath, max_order_id, max_stock_code, sorted);
    }
 };
 
