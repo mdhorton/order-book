@@ -3,6 +3,8 @@
 
 #include <linux/types.h>
 
+#include "common.hpp"
+
 namespace order_book::itch {
 
 struct ItchRawBase {
@@ -10,7 +12,7 @@ struct ItchRawBase {
    __be16 tracking_num;
    __u8 timestamp[6];
    __be64 order_id;
-} __attribute__((packed));
+} PACKED;
 
 struct ItchRawOrderAdd :
       ItchRawBase {
@@ -18,40 +20,40 @@ struct ItchRawOrderAdd :
    __be32 quantity;
    __u8 stock[8];
    __be32 price;
-} __attribute__((packed));
+} PACKED;
 
 struct ItchRawOrderAddMpid :
       ItchRawOrderAdd {
    __be32 attribution;
-} __attribute__((packed));
+} PACKED;
 
 struct ItchRawOrderExecuted :
       ItchRawBase {
    __be32 quantity;
    __be64 match_num;
-} __attribute__((packed));
+} PACKED;
 
 struct ItchRawOrderExecutedPrice :
       ItchRawOrderExecuted {
    __u8 printable;
    __be32 price;
-} __attribute__((packed));
+} PACKED;
 
 struct ItchRawOrderCancel :
       ItchRawBase {
    __be32 quantity;
-} __attribute__((packed));
+} PACKED;
 
 struct ItchRawOrderDelete :
       ItchRawBase {
-} __attribute__((packed));
+} PACKED;
 
 struct ItchRawOrderReplace :
       ItchRawBase {
    __be64 new_order_id;
    __be32 quantity;
    __be32 price;
-} __attribute__((packed));
+} PACKED;
 
 } //namespace order_book::itch
 

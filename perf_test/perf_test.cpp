@@ -7,6 +7,7 @@
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
+#include "nostromo/thread_utils.hpp"
 
 #include "utils.hpp"
 #include "itch/itch.hpp"
@@ -140,6 +141,7 @@ public:
 
 int main() {
    using order_book::itch::v02::perf_test::PerfTest;
+   nostromo::ThreadUtils::SetAffinity(23);
 
    std::cout.imbue(std::locale(""));
    std::string base_dir = "/remote/data/nasdaq-itch/";

@@ -313,39 +313,40 @@ public:
          uint32_t max_order_id,
          uint16_t max_stock_code,
          auto &stock_prices,
-         size_t page_size)
+         size_t page_size = 0)
          : orders_mmap_{max_order_id + 1u, page_size},
            order_books_mmap_{max_stock_code + 1u, page_size},
            orders_{orders_mmap_.Span()},
            order_books_{order_books_mmap_.Span()} {
-      auto empty_prices = std::make_pair(std::set<uint32_t>{}, std::set<uint32_t>{});
-
-      for (auto stock_code = 0u; stock_code <= max_stock_code; ++stock_code) {
-         auto res = stock_prices.find(stock_code);
-         auto pair = res == stock_prices.end() ? empty_prices : res->second;
+      for (auto &[stock_code, pair]: stock_prices) {
          auto addr = &order_books_[stock_code];
          new(addr) OrderBook(orders_, pair.first, pair.second);
       }
    }
 
    void OrderAdd(const ItchOrderAdd &order) {
-      (&order_books_[order.stock_code])->OrderAdd(order);
+      auto &order_book = order_books_[order.stock_code];
+      order_book.OrderAdd(order);
    }
 
    void OrderExecuted(const ItchOrderExecuted &order) {
-      (&order_books_[order.stock_code])->OrderExecuted(order);
+      auto &order_book = order_books_[order.stock_code];
+      order_book.OrderExecuted(order);
    }
 
    void OrderCancel(const ItchOrderCancel &order) {
-      (&order_books_[order.stock_code])->OrderCancel(order);
+      auto &order_book = order_books_[order.stock_code];
+      order_book.OrderCancel(order);
    }
 
    void OrderDelete(const ItchOrderDelete &order) {
-      (&order_books_[order.stock_code])->OrderDelete(order);
+      auto &order_book = order_books_[order.stock_code];
+      order_book.OrderDelete(order);
    }
 
    void OrderReplace(const ItchOrderReplace &order) {
-      (&order_books_[order.stock_code])->OrderReplace(order);
+      auto &order_book = order_books_[order.stock_code];
+      order_book.OrderReplace(order);
    }
 };
 
