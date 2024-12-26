@@ -7,7 +7,6 @@ set(ORDER_BOOK_SOURCE_FILES
         common.hpp
         itch/itch.hpp
         itch/itch_raw.hpp
-        itch/v02/model.hpp
         itch/v02/order_book.hpp
 )
 

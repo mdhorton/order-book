@@ -6,16 +6,20 @@ https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproduct
 
 version 2.0
 baseline
-orders/sec: 8.2 M
+orders/sec: 8.65 M
 
 version 2.1
 orders + order_books -> huge pages 2MB
-orders/sec: 9.3 M
+orders/sec: 9.68 M
 
 version 2.2
 orders + order_books -> huge pages 1GB
-orders/sec: 9.6 M
+orders/sec: 10.05 M
 
 version 2.3
 group/sort orders by stock_code
-orders/sec: 24.4 M
+orders/sec: 25.49 M
+
+version 2.4
+meta data prices set -> vector
+orders/sec: 26.69 M

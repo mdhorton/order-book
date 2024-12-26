@@ -1,16 +1,24 @@
-#include <fstream>
 #include <iostream>
 #include <map>
 #include <set>
+
+#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
 
 #include "utils.hpp"
-#include "itch/types.hpp"
 #include "itch/itch.hpp"
+#include "itch/metadata_io.hpp"
 
 namespace order_book::itch {
+
+template<typename K, typename V>
+using MAP = boost::unordered_flat_map<K, V>;
+
+template<typename K>
+using SET = boost::unordered_flat_set<K>;
 
 class MetadataCreator {
 private:
@@ -21,7 +29,7 @@ private:
       auto data = mmap.Span();
 
       MAP<uint32_t, uint8_t> bid_map;
-      // stock_code -> pair<bid_prices, ask_prices>
+      // stock_code -> pair<bids, asks>
       MAP<uint16_t, std::pair<SET<uint32_t>, SET<uint32_t>>> stock_prices;
 
       uint32_t max_order_id = 0;
@@ -118,56 +126,13 @@ private:
       return sorted;
    }
 
-   static void ExportMetaData(
-         std::string &fpath,
-         uint32_t max_order_id,
-         uint16_t max_stock_code,
-         auto &stock_prices) {
-      auto start = nostromo::TimeUtils::Now();
-
-      auto out_path = Utils::RemoveExtension(fpath) + ".meta";
-      std::ofstream out(out_path, std::ios_base::out | std::ios_base::binary);
-
-      out.write(reinterpret_cast<char *>(&max_order_id), sizeof(max_order_id));
-      out.write(reinterpret_cast<char *>(&max_stock_code), sizeof(max_stock_code));
-
-      auto stock_cnt = stock_prices.size();
-      out.write(reinterpret_cast<char *>(&stock_cnt), sizeof(stock_cnt));
-
-      for (auto &[stock_code, pair]: stock_prices) {
-         out.write(reinterpret_cast<const char *>(&stock_code), sizeof(stock_code));
-         WritePrices(out, pair.first);
-         WritePrices(out, pair.second);
-      }
-
-      if (out.fail()) {
-         throw nostromo::Error("write() failed", EX_INFO);
-      }
-
-      auto stop = nostromo::TimeUtils::Now();
-      auto elap = stop - start;
-
-      std::cout
-            << "ExportMetaData" << std::endl
-            << "elapsed: " << elap.count() << std::endl
-            << std::endl;
-   }
-
-   static void WritePrices(std::ofstream &out, auto &prices) {
-      auto price_cnt = prices.size();
-      out.write(reinterpret_cast<char *>(&price_cnt), sizeof(price_cnt));
-      for (auto price: prices) {
-         out.write(reinterpret_cast<char *>(&price), sizeof(price));
-      }
-   }
-
 public:
    static void Run(std::string &fpath) {
       std::cout << "processing: " << fpath << std::endl;
       auto [max_order_id, max_stock_code, stock_prices] =
             CreateMetaData(fpath);
       auto sorted = SortStockPrices(stock_prices);
-      ExportMetaData(fpath, max_order_id, max_stock_code, sorted);
+      MetadataIO::Write(fpath, max_order_id, max_stock_code, sorted);
    }
 };
 

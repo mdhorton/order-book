@@ -4,9 +4,10 @@
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 
-#include "nostromo/mmap.hpp"
+#include "nostromo/error.hpp"
 #include "nostromo/time_utils.hpp"
 
+#include "utils.hpp"
 #include "itch/itch.hpp"
 #include "itch/itch_raw.hpp"
 
@@ -19,7 +20,7 @@ private:
 
       auto start = nostromo::TimeUtils::Now();
 
-      auto out_path = RemoveExtension(in_path) + ".bin";
+      auto out_path = Utils::RemoveExtension(in_path) + ".bin";
       std::ofstream out_bin(out_path, std::ios_base::out | std::ios_base::binary);
 
       std::ifstream in(in_path, std::ios_base::in | std::ios_base::binary);
@@ -263,12 +264,6 @@ private:
              ((uint64_t) (timestamp[3]) << 16) |
              ((uint64_t) (timestamp[4]) << 8) |
              ((uint64_t) (timestamp[5]));
-   }
-
-   static std::string RemoveExtension(std::string &path) {
-      auto pos = path.find_last_of('.');
-      if (pos <= 0) return path;
-      return path.substr(0, pos);
    }
 
 public:

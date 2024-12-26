@@ -11,57 +11,18 @@
 
 #include "utils.hpp"
 #include "itch/itch.hpp"
+#include "itch/metadata_io.hpp"
 #include "itch/v02/order_book.hpp"
 
 namespace order_book::itch::v02::perf_test {
 
 class PerfTest {
 private:
-   template<typename T>
-   static auto ReadInt(std::ifstream &in) {
-      T obj{};
-      auto n = (std::streamsize) sizeof(T);
-      in.read((char *) &obj, n);
-      if (in.gcount() != n) {
-         throw nostromo::Error("read() failed", EX_INFO);
-      }
-      return obj;
-   }
-
-   static auto ReadPrices(std::ifstream &in) {
-      std::set<uint32_t> prices;
-      auto price_cnt = ReadInt<size_t>(in);
-      for (auto idx = 0u; idx < price_cnt; ++idx) {
-         prices.emplace(ReadInt<uint32_t>(in));
-      }
-      return prices;
-   }
-
-   static auto ImportMetaData(std::string &fpath) {
-      auto in_path = Utils::RemoveExtension(fpath) + ".meta";
-      std::ifstream in(in_path, std::ios_base::in | std::ios_base::binary);
-
-      auto max_order_id = ReadInt<uint32_t>(in);
-      auto max_stock_code = ReadInt<uint16_t>(in);
-      auto stock_cnt = ReadInt<size_t>(in);
-
-      std::map<uint16_t, std::pair<std::set<uint32_t>, std::set<uint32_t>>> stock_prices;
-
-      for (auto idx = 0u; idx < stock_cnt; ++idx) {
-         auto stock_code = ReadInt<uint16_t>(in);
-         auto bids = ReadPrices(in);
-         auto asks = ReadPrices(in);
-         stock_prices[stock_code] = std::make_pair(bids, asks);
-      }
-
-      return std::make_tuple(max_order_id, max_stock_code, stock_prices);
-   }
-
    static auto RunPerfTest(std::string &fpath) {
       auto start = nostromo::TimeUtils::Now();
 
       auto [max_order_id, max_stock_code, stock_prices]
-            = ImportMetaData(fpath);
+            = MetadataIO::Read(fpath);
 
       auto page_size = nostromo::HugePageUtils::SIZE_1GB;
       OrderBooks books{max_order_id, max_stock_code, stock_prices, page_size};
@@ -147,8 +108,8 @@ int main() {
    std::string base_dir = "/remote/data/nasdaq-itch/";
 
    auto fnames = {
-         "01302019.NASDAQ_ITCH50.sorted-bin",
-         "01302020.NASDAQ_ITCH50.sorted-bin",
+//         "01302019.NASDAQ_ITCH50.sorted-bin",
+//         "01302020.NASDAQ_ITCH50.sorted-bin",
          "12302019.NASDAQ_ITCH50.sorted-bin"
    };
 

@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cassert>
 #include <span>
-#include <set>
 
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
@@ -14,9 +13,28 @@
 #include "common.hpp"
 #include "itch/types.hpp"
 #include "itch/itch.hpp"
-#include "itch/v02/model.hpp"
 
 namespace order_book::itch::v02 {
+
+// 32 bytes
+struct Order {
+   uint32_t order_id;
+   uint32_t quantity;
+   uint32_t next_idx;
+   uint32_t prev_idx;
+   uint32_t price_idx;
+   uint16_t bid;
+};
+
+// 16 bytes
+struct PriceLevel {
+   uint32_t price;
+   uint32_t quantity;
+   uint16_t order_count;
+   uint16_t head_order_idx;
+   uint16_t tail_order_idx;
+   uint16_t idx;
+};
 
 class OrderBook {
    std::span<Order> orders_;
@@ -34,18 +52,18 @@ class OrderBook {
 
 public:
    OrderBook(
-         std::span<Order> orders,
-         std::set<uint32_t> &bid_prices,
-         std::set<uint32_t> &ask_prices) :
+         auto orders,
+         auto &bid_prices,
+         auto &ask_prices) :
          orders_{orders} {
       InitializePrices(bid_levels_, bid_prices, bid_price_map_);
       InitializePrices(ask_levels_, ask_prices, ask_price_map_);
    }
 
    static void InitializePrices(
-         std::vector<PriceLevel> &price_levels,
-         std::set<uint32_t> &prices,
-         MAP<uint32_t, PriceLevel *> &price_map) {
+         auto &price_levels,
+         auto &prices,
+         auto &price_map) {
       price_levels.reserve(prices.size());
 
       uint16_t idx = 0;
@@ -161,7 +179,7 @@ private:
       auto price_level = PriceLevelFromPrice(itch_order.bid, itch_order.price);
       auto order = OrderFromId(itch_order.order_id);
 
-      order->timestamp = itch_order.timestamp;
+//      order->timestamp = itch_order.timestamp;
       order->order_id = itch_order.order_id;
       order->quantity = itch_order.quantity;
       order->price_idx = price_level->idx;
@@ -310,8 +328,8 @@ private:
 
 public:
    explicit OrderBooks(
-         uint32_t max_order_id,
-         uint16_t max_stock_code,
+         auto max_order_id,
+         auto max_stock_code,
          auto &stock_prices,
          size_t page_size = 0)
          : orders_mmap_{max_order_id + 1u, page_size},

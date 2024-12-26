@@ -1,16 +1,17 @@
 #include <fstream>
 #include <iostream>
 
+#include <boost/unordered/unordered_flat_map.hpp>
+
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
 
 #include "utils.hpp"
-#include "itch/types.hpp"
 #include "itch/itch.hpp"
 
 namespace order_book::itch {
 
-using STOCK_ORDERS = MAP<uint16_t, std::vector<std::pair<char, ItchBase *>>>;
+using STOCK_ORDERS = boost::unordered_flat_map<uint16_t, std::vector<std::pair<char, ItchBase *>>>;
 
 class OrderSorter {
 private:
