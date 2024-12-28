@@ -1,3 +1,5 @@
+#include <immintrin.h>
+
 #include <span>
 
 #include <benchmark/benchmark.h>
@@ -7,6 +9,41 @@
 #include "nostromo/memory_utils.hpp"
 
 #include "itch/itch.hpp"
+
+
+static void BM_simd(benchmark::State &state) {
+   static constexpr int8_t lookup_table[] = {
+         0, 0, 0, 0,
+         1, 1, 1, 1,
+         2, 2, 2, 2,
+         3, 3, 3, 3,
+         4, 4, 4, 4,
+         5, 5, 5, 5,
+         6, 6, 6, 6,
+         7, 7, 7, 7};
+
+   uint32_t vals[8] = {
+         (uint32_t) std::rand(), (uint32_t) std::rand(),
+         (uint32_t) std::rand(), (uint32_t) std::rand(),
+         (uint32_t) std::rand(), (uint32_t) std::rand(),
+         (uint32_t) std::rand(), (uint32_t) std::rand()};
+
+   auto test_val = std::rand();
+   uint64_t tot = 0;
+   auto n = _mm256_set1_epi32(test_val);
+
+   for (auto _: state) {
+      ++vals[0];
+      auto data = _mm256_load_si256((__m256i *) vals);
+      auto r = _mm256_cmpeq_epi32(n, data); // lat=1
+      auto mask = _mm256_movemask_ps(_mm256_castsi256_ps(r));
+//      auto mask = _mm256_movemask_epi8(r);
+      if (mask != 0) {
+         auto idx = lookup_table[mask];
+         benchmark::DoNotOptimize(tot += idx);
+      }
+   }
+}
 
 struct Data {
    uint64_t v1;
@@ -151,9 +188,12 @@ static void BM_hash(benchmark::State &state) {
    benchmark::DoNotOptimize(x);
 }
 
-BENCHMARK(BM_ptr);
-BENCHMARK(BM_span);
-BENCHMARK(BM_std_unordered_map);
-BENCHMARK(BM_boost_unordered_flat_map);
-BENCHMARK(BM_div_32);
-BENCHMARK(BM_hash);
+BENCHMARK(BM_simd);
+//BENCHMARK(BM_ptr);
+//BENCHMARK(BM_span);
+//BENCHMARK(BM_std_unordered_map);
+//BENCHMARK(BM_boost_unordered_flat_map);
+//BENCHMARK(BM_div_32);
+//BENCHMARK(BM_hash);
+
+#pragma clang diagnostic pop

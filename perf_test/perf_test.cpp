@@ -2,30 +2,29 @@
 #include <stdexcept>
 #include <string>
 #include <iostream>
-#include <fstream>
-#include <map>
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
 #include "nostromo/thread_utils.hpp"
 
-#include "utils.hpp"
 #include "itch/itch.hpp"
 #include "itch/metadata_io.hpp"
 #include "itch/v02/order_book.hpp"
+#include "itch/v03/order_book.hpp"
+#include "itch/v04/order_book.hpp"
 
-namespace order_book::itch::v02::perf_test {
+namespace order_book::itch::perf_test {
 
 class PerfTest {
 private:
-   static auto RunPerfTest(std::string &fpath) {
+   template<typename BOOKS>
+   static void RunPerfTest(std::string &fpath, size_t page_size = 0) {
       auto start = nostromo::TimeUtils::Now();
 
       auto [max_order_id, max_stock_code, stock_prices]
             = MetadataIO::Read(fpath);
 
-      auto page_size = nostromo::HugePageUtils::SIZE_1GB;
-      OrderBooks books{max_order_id, max_stock_code, stock_prices, page_size};
+      BOOKS books{max_order_id, max_stock_code, stock_prices, page_size};
 
       nostromo::Mmap<char> mmap{fpath};
       auto data = mmap.Span();
@@ -40,38 +39,40 @@ private:
          switch (msg_type) {
             case 'A':
             case 'F': {
-               auto order = (ItchOrderAdd *) &data[offset];
+               auto order = reinterpret_cast<ItchOrderAdd *>(&data[offset]);
                books.OrderAdd(*order);
                offset += 23;
                break;
             }
             case 'E':
             case 'C': {
-               auto order = (ItchOrderExecuted *) &data[offset];
+               auto order = reinterpret_cast<ItchOrderExecuted *>(&data[offset]);
                books.OrderExecuted(*order);
                offset += 18;
                break;
             }
             case 'X': {
-               auto order = (ItchOrderCancel *) &data[offset];
+               auto order = reinterpret_cast<ItchOrderCancel *>(&data[offset]);
                books.OrderCancel(*order);
                offset += 18;
                break;
             }
             case 'D': {
-               auto order = (ItchOrderDelete *) &data[offset];
+               auto order = reinterpret_cast<ItchOrderDelete *>(&data[offset]);
                books.OrderDelete(*order);
                offset += 14;
                break;
             }
             case 'U': {
-               auto order = (ItchOrderReplace *) &data[offset];
+               auto order = reinterpret_cast<ItchOrderReplace *>(&data[offset]);
                books.OrderReplace(*order);
                offset += 26;
                break;
             }
             default:
-               throw std::runtime_error("unexpected msg_type at offset: " + std::to_string(offset - 1));
+               throw std::runtime_error(
+                     "unexpected msg_type at offset: " +
+                     std::to_string(offset - 1));
          }
       }
 
@@ -94,14 +95,15 @@ private:
 public:
    static void Run(std::string &fpath) {
       std::cout << "processing: " << fpath << std::endl;
-      RunPerfTest(fpath);
+//      RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_2MB);
+//      RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      v04::Foo::Bar();
    }
 };
 
-} // namespace order_book::itch::v02::perf_test
+} // namespace order_book::itch::perf_test
 
 int main() {
-   using order_book::itch::v02::perf_test::PerfTest;
    nostromo::ThreadUtils::SetAffinity(23);
 
    std::cout.imbue(std::locale(""));
@@ -115,7 +117,7 @@ int main() {
 
    for (auto &fname: fnames) {
       auto fpath = base_dir + fname;
-      PerfTest::Run(fpath);
+      order_book::itch::perf_test::PerfTest::Run(fpath);
    }
 
    return 0;

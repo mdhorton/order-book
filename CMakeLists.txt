@@ -37,6 +37,8 @@ add_compile_options(
         -Wsign-compare
 )
 
+include_directories(include)
+
 include_directories(${INTERNAL_DEPENDENCY_DIR}/nostromo/src)
 
 # eliminate boost -Wundef warnings.
