@@ -20,26 +20,29 @@ static void BM_simd(benchmark::State &state) {
          4, 4, 4, 4,
          5, 5, 5, 5,
          6, 6, 6, 6,
-         7, 7, 7, 7};
+         7, 7, 7, 7
+   };
 
    uint32_t vals[8] = {
          (uint32_t) std::rand(), (uint32_t) std::rand(),
          (uint32_t) std::rand(), (uint32_t) std::rand(),
          (uint32_t) std::rand(), (uint32_t) std::rand(),
-         (uint32_t) std::rand(), (uint32_t) std::rand()};
+         (uint32_t) std::rand(), (uint32_t) std::rand()
+   };
 
    auto test_val = std::rand();
    uint64_t tot = 0;
-   auto n = _mm256_set1_epi32(test_val);
 
    for (auto _: state) {
       ++vals[0];
       auto data = _mm256_load_si256((__m256i *) vals);
-      auto r = _mm256_cmpeq_epi32(n, data); // lat=1
-      auto mask = _mm256_movemask_ps(_mm256_castsi256_ps(r));
-//      auto mask = _mm256_movemask_epi8(r);
+      auto test = _mm256_set1_epi32(test_val++);
+      auto cmp = _mm256_cmpeq_epi32(test, data);
+      auto mask = _mm256_movemask_epi8(cmp);
+
       if (mask != 0) {
-         auto idx = lookup_table[mask];
+         auto tzcnt = _mm_tzcnt_32(mask);
+         auto idx = lookup_table[tzcnt];
          benchmark::DoNotOptimize(tot += idx);
       }
    }
