@@ -41,7 +41,8 @@ static void BM_simd(benchmark::State &state) {
       auto mask = _mm256_movemask_epi8(cmp);
 
       if (mask != 0) {
-         auto tzcnt = _mm_tzcnt_32(mask);
+         // auto tzcnt = _mm_tzcnt_32(mask);
+         auto tzcnt = __tzcnt_u32(mask);
          auto idx = lookup_table[tzcnt];
          benchmark::DoNotOptimize(tot += idx);
       }

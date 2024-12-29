@@ -1,6 +1,7 @@
 #ifndef ORDER_BOOK_ITCH_METADATA_IO_HPP
 #define ORDER_BOOK_ITCH_METADATA_IO_HPP
 
+#include <cstdint>
 #include <fstream>
 #include <vector>
 #include <map>
