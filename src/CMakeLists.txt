@@ -5,7 +5,7 @@ include_directories(
 set(ORDER_BOOK_SOURCE_FILES
         main.cpp
         common.hpp
-        itch/mph/prices.hpp
+        itch/prices/prices.hpp
         itch/itch.hpp
         itch/itch_raw.hpp
         itch/v02/order_book.hpp
