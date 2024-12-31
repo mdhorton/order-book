@@ -1,17 +1,17 @@
 #include <immintrin.h>
 
+#include <random>
 #include <span>
 
 #include <benchmark/benchmark.h>
-
 #include <boost/unordered/unordered_flat_map.hpp>
 
 #include "nostromo/memory_utils.hpp"
-
-#include "itch/itch.hpp"
-
+#include "nostromo/random.hpp"
 
 static void BM_simd(benchmark::State &state) {
+   static auto RNG = nostromo::Random::MT19937();
+
    static constexpr int8_t lookup_table[] = {
          0, 0, 0, 0,
          1, 1, 1, 1,
@@ -24,27 +24,23 @@ static void BM_simd(benchmark::State &state) {
    };
 
    uint32_t vals[8] = {
-         (uint32_t) std::rand(), (uint32_t) std::rand(),
-         (uint32_t) std::rand(), (uint32_t) std::rand(),
-         (uint32_t) std::rand(), (uint32_t) std::rand(),
-         (uint32_t) std::rand(), (uint32_t) std::rand()
+         RNG(), RNG(), RNG(), RNG(), RNG(), RNG(), RNG(), RNG()
    };
 
-   auto test_val = std::rand();
+   auto test_val = RNG();
    uint64_t tot = 0;
 
    for (auto _: state) {
       ++vals[0];
-      auto data = _mm256_load_si256((__m256i *) vals);
-      auto test = _mm256_set1_epi32(test_val++);
-      auto cmp = _mm256_cmpeq_epi32(test, data);
-      auto mask = _mm256_movemask_epi8(cmp);
+      const auto data = _mm256_load_si256(reinterpret_cast<__m256i *>(vals));
+      const auto test = _mm256_set1_epi32(test_val++);
+      const auto cmp = _mm256_cmpeq_epi32(test, data);
 
-      if (mask != 0) {
+      if (const auto mask = _mm256_movemask_epi8(cmp); mask != 0) {
          // auto tzcnt = _mm_tzcnt_32(mask);
-         auto tzcnt = __tzcnt_u32(mask);
-         auto idx = lookup_table[tzcnt];
-         benchmark::DoNotOptimize(tot += idx);
+         // auto tzcnt = __tzcnt_u32(mask);
+         // auto idx = lookup_table[tzcnt];
+         benchmark::DoNotOptimize(tot += mask);
       }
    }
 }
@@ -61,18 +57,20 @@ struct Data {
 };
 
 static void BM_ptr(benchmark::State &state) {
-   auto size = 8u;
-   auto data = nostromo::MemoryUtils::Calloc<Data>(size);
+   static auto RNG = nostromo::Random::MT19937_64();
+
+   constexpr auto size = 8u;
+   const auto data = nostromo::MemoryUtils::Calloc<Data>(size);
 
    for (auto idx = 0u; idx < size; ++idx) {
-      data[idx].v1 = std::rand();
-      data[idx].v2 = std::rand();
-      data[idx].v3 = std::rand();
-      data[idx].v4 = std::rand();
-      data[idx].v5 = std::rand();
-      data[idx].v6 = std::rand();
-      data[idx].v7 = std::rand();
-      data[idx].v8 = std::rand();
+      data[idx].v1 = RNG();
+      data[idx].v2 = RNG();
+      data[idx].v3 = RNG();
+      data[idx].v4 = RNG();
+      data[idx].v5 = RNG();
+      data[idx].v6 = RNG();
+      data[idx].v7 = RNG();
+      data[idx].v8 = RNG();
    }
 
    for (auto _: state) {
@@ -94,19 +92,21 @@ static void BM_ptr(benchmark::State &state) {
 }
 
 static void BM_span(benchmark::State &state) {
-   auto size = 8u;
-   auto raw_data = nostromo::MemoryUtils::Calloc<Data>(size);
-   std::span<Data> data{raw_data, size};
+   static auto RNG = nostromo::Random::MT19937_64();
+
+   constexpr auto size = 8u;
+   const auto raw_data = nostromo::MemoryUtils::Calloc<Data>(size);
+   std::span data{raw_data, size};
 
    for (auto idx = 0u; idx < size; ++idx) {
-      data[idx].v1 = std::rand();
-      data[idx].v2 = std::rand();
-      data[idx].v3 = std::rand();
-      data[idx].v4 = std::rand();
-      data[idx].v5 = std::rand();
-      data[idx].v6 = std::rand();
-      data[idx].v7 = std::rand();
-      data[idx].v8 = std::rand();
+      data[idx].v1 = RNG();
+      data[idx].v2 = RNG();
+      data[idx].v3 = RNG();
+      data[idx].v4 = RNG();
+      data[idx].v5 = RNG();
+      data[idx].v6 = RNG();
+      data[idx].v7 = RNG();
+      data[idx].v8 = RNG();
    }
 
    for (auto _: state) {
@@ -128,7 +128,9 @@ static void BM_span(benchmark::State &state) {
 }
 
 static void BM_std_unordered_map(benchmark::State &state) {
-   uint64_t p1 = std::rand();
+   static auto RNG = nostromo::Random::MT19937_64();
+
+   uint64_t p1 = RNG();
    std::unordered_map<uint64_t, uint64_t> map;
 
    for (auto _: state) {
@@ -145,7 +147,9 @@ static void BM_std_unordered_map(benchmark::State &state) {
 }
 
 static void BM_boost_unordered_flat_map(benchmark::State &state) {
-   uint64_t p1 = std::rand();
+   static auto RNG = nostromo::Random::MT19937_64();
+
+   uint64_t p1 = RNG();
    boost::unordered_flat_map<uint64_t, uint64_t> map;
 
    for (auto _: state) {
@@ -162,8 +166,10 @@ static void BM_boost_unordered_flat_map(benchmark::State &state) {
 }
 
 static void BM_div_32(benchmark::State &state) {
+      static auto RNG = nostromo::Random::MT19937();
+
    static constexpr int32_t div = 100;
-   int32_t p1 = std::rand();
+   int32_t p1 = RNG();
    int32_t r1 = 0;
 
    for (auto _: state) {
@@ -178,7 +184,9 @@ static void BM_div_32(benchmark::State &state) {
 // calculate a decent quality 32-bit hash.
 // https://github.com/skeeto/hash-prospector
 static void BM_hash(benchmark::State &state) {
-   uint32_t x = std::rand();
+   static auto RNG = nostromo::Random::MT19937();
+
+   uint32_t x = RNG();
 
    for (auto _: state) {
       ++x;
@@ -193,11 +201,9 @@ static void BM_hash(benchmark::State &state) {
 }
 
 BENCHMARK(BM_simd);
-//BENCHMARK(BM_ptr);
-//BENCHMARK(BM_span);
-//BENCHMARK(BM_std_unordered_map);
-//BENCHMARK(BM_boost_unordered_flat_map);
-//BENCHMARK(BM_div_32);
-//BENCHMARK(BM_hash);
-
-#pragma clang diagnostic pop
+BENCHMARK(BM_ptr);
+BENCHMARK(BM_span);
+BENCHMARK(BM_std_unordered_map);
+BENCHMARK(BM_boost_unordered_flat_map);
+BENCHMARK(BM_div_32);
+BENCHMARK(BM_hash);

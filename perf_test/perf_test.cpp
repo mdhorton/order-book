@@ -11,7 +11,8 @@
 #include "itch/metadata_io.hpp"
 #include "itch/v02/order_book.hpp"
 #include "itch/v03/order_book.hpp"
-#include "itch/v04/order_book.hpp"
+#include "itch/v05/order_book.hpp"
+#include "itch/v06/order_book.hpp"
 
 namespace order_book::itch::perf_test {
 
@@ -19,14 +20,14 @@ class PerfTest {
 private:
    template<typename BOOKS>
    static void RunPerfTest(std::string &fpath, size_t page_size = 0) {
-      auto start = nostromo::TimeUtils::Now();
+      const auto start = nostromo::TimeUtils::Now();
 
       auto [max_order_id, max_stock_code, stock_prices]
             = MetadataIO::Read(fpath);
 
       BOOKS books{max_order_id, max_stock_code, stock_prices, page_size};
 
-      nostromo::Mmap<char> mmap{fpath};
+      const nostromo::Mmap<char> mmap{fpath};
       auto data = mmap.Span();
 
       uint64_t offset = 0;
@@ -34,9 +35,8 @@ private:
 
       while (offset < data.size()) {
          ++order_cnt;
-         auto msg_type = data[offset++];
 
-         switch (msg_type) {
+         switch (data[offset++]) {
             case 'A':
             case 'F': {
                auto order = reinterpret_cast<ItchOrderAdd *>(&data[offset]);
@@ -76,12 +76,12 @@ private:
          }
       }
 
-      auto stop = nostromo::TimeUtils::Now();
-      auto elap = stop - start;
-      auto ops = static_cast<uint64_t>(
+      const auto stop = nostromo::TimeUtils::Now();
+      const auto elap = stop - start;
+      const auto ops = static_cast<uint64_t>(
             static_cast<double>(order_cnt) /
             (static_cast<double>(elap.count()) / 1'000'000'000));
-      auto npo = elap.count() / order_cnt;
+      const auto npo = elap.count() / order_cnt;
 
       std::cout
             << "RunPerfTest" << std::endl
@@ -95,16 +95,17 @@ private:
 public:
    static void Run(std::string &fpath) {
       std::cout << "processing: " << fpath << std::endl;
-//      RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_2MB);
-//      RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      v04::Foo::Bar();
+      // RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      // RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      // RunPerfTest<v05::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
    }
 };
 
 } // namespace order_book::itch::perf_test
 
 int main() {
-   nostromo::ThreadUtils::SetAffinity(23);
+   nostromo::ThreadUtils::SetAffinity(11);
 
    std::cout.imbue(std::locale(""));
    std::string base_dir = "/remote/data/nasdaq-itch/";

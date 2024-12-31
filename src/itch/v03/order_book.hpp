@@ -6,16 +6,16 @@
 #include <span>
 
 #include <boost/unordered/unordered_flat_map.hpp>
-#include <boost/unordered/unordered_flat_set.hpp>
 
 #include "nostromo/mmap.hpp"
 
 #include "common.hpp"
 #include "itch/itch.hpp"
 
-#define MAP std::unordered_map
-
 namespace order_book::itch::v03 {
+
+template<typename K, typename V>
+using MAP = boost::unordered_flat_map<K, V>;
 
 struct Order {
    uint32_t quantity;
@@ -154,7 +154,6 @@ private:
       const auto order = OrderFromId(itch_order.order_id);
       const auto price_level = PriceLevelFromIndex(order->bid, order->price_idx);
 
-      assert(price_level->order_count > 0);
       assert(price_level->quantity >= order->quantity);
 
       price_level->quantity -= order->quantity;

@@ -11,10 +11,12 @@
 #include "nostromo/mmap.hpp"
 
 #include "common.hpp"
-#include "itch/types.hpp"
 #include "itch/itch.hpp"
 
 namespace order_book::itch::v02 {
+
+template<typename K, typename V>
+using MAP = boost::unordered_flat_map<K, V>;
 
 // 32 bytes
 struct Order {
