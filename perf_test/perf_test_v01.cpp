@@ -13,11 +13,12 @@
 #include "itch/v03/order_book.hpp"
 #include "itch/v05/order_book.hpp"
 #include "itch/v06/order_book.hpp"
+#include "itch/v07/order_book.hpp"
+#include "itch/v08/order_book.hpp"
+#include "itch/v09/order_book.hpp"
 
 namespace order_book::itch::perf_test {
-
 class PerfTest {
-private:
    template<typename BOOKS>
    static void RunPerfTest(std::string &fpath, size_t page_size = 0) {
       const auto start = nostromo::TimeUtils::Now();
@@ -37,14 +38,24 @@ private:
          ++order_cnt;
 
          switch (data[offset++]) {
-            case 'A':
+            case 'A': {
+               auto order = reinterpret_cast<ItchOrderAdd *>(&data[offset]);
+               books.OrderAdd(*order);
+               offset += 23;
+               break;
+            }
             case 'F': {
                auto order = reinterpret_cast<ItchOrderAdd *>(&data[offset]);
                books.OrderAdd(*order);
                offset += 23;
                break;
             }
-            case 'E':
+            case 'E': {
+               auto order = reinterpret_cast<ItchOrderExecuted *>(&data[offset]);
+               books.OrderExecuted(*order);
+               offset += 18;
+               break;
+            }
             case 'C': {
                auto order = reinterpret_cast<ItchOrderExecuted *>(&data[offset]);
                books.OrderExecuted(*order);
@@ -71,17 +82,18 @@ private:
             }
             default:
                throw std::runtime_error(
-                     "unexpected msg_type at offset: " +
-                     std::to_string(offset - 1));
+                  "unexpected msg_type at offset: " +
+                  std::to_string(offset - 1)
+               );
          }
       }
 
       const auto stop = nostromo::TimeUtils::Now();
       const auto elap = stop - start;
-      const auto ops = static_cast<uint64_t>(
-            static_cast<double>(order_cnt) /
-            (static_cast<double>(elap.count()) / 1'000'000'000));
-      const auto npo = elap.count() / order_cnt;
+      const auto elap_d = static_cast<double>(elap.count());
+      const auto order_cnt_d = static_cast<double>(order_cnt);
+      const auto ops = static_cast<uint64_t>(order_cnt_d / (elap_d / 1'000'000'000.0));
+      const auto npo = elap_d / order_cnt_d;
 
       std::cout
             << "RunPerfTest" << std::endl
@@ -98,22 +110,24 @@ public:
       // RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
       // RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
       // RunPerfTest<v05::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      // RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      // RunPerfTest<v07::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      // RunPerfTest<v08::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      RunPerfTest<v09::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
    }
 };
-
 } // namespace order_book::itch::perf_test
 
 int main() {
    nostromo::ThreadUtils::SetAffinity(11);
 
    std::cout.imbue(std::locale(""));
-   std::string base_dir = "/remote/data/nasdaq-itch/";
+   const std::string base_dir = "/remote/data/nasdaq-itch/";
 
-   auto fnames = {
-//         "01302019.NASDAQ_ITCH50.sorted-bin",
-//         "01302020.NASDAQ_ITCH50.sorted-bin",
-         "12302019.NASDAQ_ITCH50.sorted-bin"
+   const auto fnames = {
+      //         "01302019.NASDAQ_ITCH50.sorted-bin",
+      //         "01302020.NASDAQ_ITCH50.sorted-bin",
+      "12302019.NASDAQ_ITCH50.sorted-bin"
    };
 
    for (auto &fname: fnames) {
