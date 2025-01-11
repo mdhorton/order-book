@@ -16,14 +16,17 @@
 #include "itch/v07/order_book.hpp"
 #include "itch/v08/order_book.hpp"
 #include "itch/v09/order_book.hpp"
+#include "itch/v10/order_book.hpp"
+#include "itch/v11/order_book.hpp"
+#include "itch/v12/order_book.hpp"
 
 namespace order_book::itch::perf_test {
 class PerfTest {
    template<typename BOOKS>
-   static void RunPerfTest(std::string &fpath, size_t page_size = 0) {
+   static void RunPerfTest(std::string &fpath, const size_t page_size = 0) {
       const auto start = nostromo::TimeUtils::Now();
 
-      auto [max_order_id, max_stock_code, stock_prices]
+      const auto [max_order_id, max_stock_code, stock_prices]
             = MetadataIO::Read(fpath);
 
       BOOKS books{max_order_id, max_stock_code, stock_prices, page_size};
@@ -113,7 +116,12 @@ public:
       // RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
       // RunPerfTest<v07::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
       // RunPerfTest<v08::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      RunPerfTest<v09::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      // RunPerfTest<v09::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      // RunPerfTest<v10::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      // RunPerfTest<v10::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      // RunPerfTest<v11::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      RunPerfTest<v12::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+      RunPerfTest<v12::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
    }
 };
 } // namespace order_book::itch::perf_test

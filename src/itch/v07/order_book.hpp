@@ -12,44 +12,42 @@
 #include "itch/itch.hpp"
 
 namespace order_book::itch::v07 {
-
-template<typename K, typename V>
-using MAP = boost::unordered_flat_map<K, V>;
-
-struct alignas(4) PriceLevel {
+struct alignas (4) PriceLevel {
    uint32_t quantity;
 };
 
 struct alignas (16) Order {
-   PriceLevel* level;
+   PriceLevel *level;
    uint32_t quantity;
    uint8_t bid;
 };
 
+using PRICE_MAP = boost::unordered_flat_map<uint32_t, PriceLevel *>;
+
 class OrderBook {
-   std::span<Order> orders_;
+   const std::span<Order> orders_;
 
    std::vector<PriceLevel> bid_levels_{};
    std::vector<PriceLevel> ask_levels_{};
-   MAP<uint32_t, PriceLevel *> bid_price_map_{};
-   MAP<uint32_t, PriceLevel *> ask_price_map_{};
+   PRICE_MAP bid_price_map_{};
+   PRICE_MAP ask_price_map_{};
    ItchOrderAdd tmp_order_add_{};
    ItchOrderDelete tmp_order_delete_{};
 
 public:
    OrderBook(
-         auto orders,
-         auto &bid_prices,
-         auto &ask_prices) :
-         orders_{orders} {
-      InitializePrices(bid_levels_, bid_prices, bid_price_map_);
-      InitializePrices(ask_levels_, ask_prices, ask_price_map_);
+      const std::span<Order> orders,
+      const std::vector<uint32_t> &bid_prices,
+      const std::vector<uint32_t> &ask_prices)
+      : orders_{orders} {
+      InitializePrices(bid_prices, bid_levels_, bid_price_map_);
+      InitializePrices(ask_prices, ask_levels_, ask_price_map_);
    }
 
    static void InitializePrices(
-         auto &price_levels,
-         auto &prices,
-         auto &price_map) {
+      const std::vector<uint32_t> &prices,
+      std::vector<PriceLevel> &price_levels,
+      PRICE_MAP &price_map) {
       price_levels.reserve(prices.size());
 
       for (uint32_t idx = 0; idx < prices.size(); ++idx) {
@@ -58,10 +56,12 @@ public:
       }
    }
 
+   ALWAYS_INLINE
    void OrderAdd(const ItchOrderAdd &itch_order) {
       OrderAddImpl(itch_order);
    }
 
+   ALWAYS_INLINE
    void OrderExecuted(const ItchOrderExecuted &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
       const auto price_level = PriceLevelFromIndex(*order);
@@ -71,6 +71,7 @@ public:
       price_level->quantity -= itch_order.quantity;
    }
 
+   ALWAYS_INLINE
    void OrderCancel(const ItchOrderCancel &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
       const auto price_level = PriceLevelFromIndex(*order);
@@ -80,10 +81,12 @@ public:
       price_level->quantity -= itch_order.quantity;
    }
 
+   ALWAYS_INLINE
    void OrderDelete(const ItchOrderDelete &itch_order) {
       OrderDeleteImpl(itch_order);
    }
 
+   ALWAYS_INLINE
    void OrderReplace(const ItchOrderReplace &itch_order) {
       tmp_order_delete_.stock_code = itch_order.stock_code;
       tmp_order_delete_.order_id = itch_order.order_id;
@@ -135,7 +138,6 @@ private:
 };
 
 class OrderBooks {
-private:
    const nostromo::Mmap<Order> orders_mmap_;
    const nostromo::Mmap<OrderBook> order_books_mmap_;
    const std::span<Order> orders_;
@@ -143,46 +145,50 @@ private:
 
 public:
    explicit OrderBooks(
-         auto max_order_id,
-         auto max_stock_code,
-         auto &stock_prices,
-         size_t page_size = 0)
-         : orders_mmap_{max_order_id + 1u, page_size},
-           order_books_mmap_{max_stock_code + 1u, page_size},
-           orders_{orders_mmap_.Span()},
-           order_books_{order_books_mmap_.Span()} {
+      auto max_order_id,
+      auto max_stock_code,
+      auto &stock_prices,
+      const size_t page_size = 0)
+      : orders_mmap_{max_order_id + 1u, page_size},
+        order_books_mmap_{max_stock_code + 1u, page_size},
+        orders_{orders_mmap_.Span()},
+        order_books_{order_books_mmap_.Span()} {
       for (auto &[stock_code, pair]: stock_prices) {
          auto addr = &order_books_[stock_code];
          new(addr) OrderBook(orders_, pair.first, pair.second);
       }
    }
 
+   ALWAYS_INLINE
    void OrderAdd(const ItchOrderAdd &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderAdd(order);
    }
 
+   ALWAYS_INLINE
    void OrderExecuted(const ItchOrderExecuted &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderExecuted(order);
    }
 
+   ALWAYS_INLINE
    void OrderCancel(const ItchOrderCancel &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderCancel(order);
    }
 
+   ALWAYS_INLINE
    void OrderDelete(const ItchOrderDelete &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderDelete(order);
    }
 
+   ALWAYS_INLINE
    void OrderReplace(const ItchOrderReplace &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderReplace(order);
    }
 };
-
 } // order_book::itch::v07
 
 #endif //ORDER_BOOK_ITCH_V07_ORDER_BOOK_HPP

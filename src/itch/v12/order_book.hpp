@@ -1,5 +1,5 @@
-#ifndef ORDER_BOOK_ITCH_V10_ORDER_BOOK_HPP
-#define ORDER_BOOK_ITCH_V10_ORDER_BOOK_HPP
+#ifndef ORDER_BOOK_ITCH_V12_ORDER_BOOK_HPP
+#define ORDER_BOOK_ITCH_V12_ORDER_BOOK_HPP
 
 #include <cstdint>
 #include <cassert>
@@ -11,12 +11,17 @@
 
 #include "itch/itch.hpp"
 
-namespace order_book::itch::v10 {
-struct alignas (4) PriceLevel {
+#include <immintrin.h>
+
+
+namespace order_book::itch::v12 {
+struct PriceLevel {
    uint32_t quantity;
+   uint16_t price_idx;
+   uint8_t simd;
 };
 
-struct alignas (16) Order {
+struct Order {
    PriceLevel *level;
    uint32_t quantity;
    uint8_t bid;
@@ -25,36 +30,53 @@ struct alignas (16) Order {
 using PRICE_MAP = boost::unordered_flat_map<uint32_t, PriceLevel *>;
 
 class OrderBook {
-   const std::span<Order> orders_;
-   const std::span<PriceLevel> bid_levels_;
-   const std::span<PriceLevel> ask_levels_;
+   static constexpr int8_t LOOKUP_TABLE[] = {
+      0, 0, 0, 0,
+      1, 1, 1, 1,
+      2, 2, 2, 2,
+      3, 3, 3, 3,
+      4, 4, 4, 4,
+      5, 5, 5, 5,
+      6, 6, 6, 6,
+      7, 7, 7, 7
+   };
 
+   const std::span<Order> orders_;
+   const std::span<int32_t> prices_[2];
+
+   std::vector<PriceLevel> levels_[2] = {std::vector<PriceLevel>(), std::vector<PriceLevel>()};
    PRICE_MAP price_maps_[2] = {PRICE_MAP{}, PRICE_MAP{}};
+   PriceLevel *prev_level_[2] = {nullptr, nullptr};
    ItchOrderAdd tmp_order_add_{};
    ItchOrderDelete tmp_order_delete_{};
 
+   // asks=15,14,13  12,11,10=bids
 public:
    OrderBook(
       const std::span<Order> orders,
-      const std::span<PriceLevel> bid_levels,
-      const std::span<PriceLevel> ask_levels,
-      const std::vector<uint32_t> &bid_prices,
-      const std::vector<uint32_t> &ask_prices)
+      const std::span<int32_t> bid_prices,
+      const std::span<int32_t> ask_prices)
       : orders_{orders},
-        bid_levels_{bid_levels},
-        ask_levels_{ask_levels} {
-      InitializePrices(bid_prices, bid_levels_, price_maps_[1]);
-      InitializePrices(ask_prices, ask_levels_, price_maps_[0]);
+        prices_{bid_prices, ask_prices} {
+      InitializePrices(bid_prices, levels_[1], price_maps_[1]);
+      InitializePrices(ask_prices, levels_[0], price_maps_[0]);
+      if (!bid_prices.empty()) prev_level_[1] = &levels_[1][0];
+      if (!ask_prices.empty()) prev_level_[0] = &levels_[0][0];
    }
 
    static void InitializePrices(
-      const std::vector<uint32_t> &prices,
-      const std::span<PriceLevel> price_levels,
+      const std::span<int32_t> prices,
+      std::vector<PriceLevel> &price_levels,
       PRICE_MAP &price_map) {
-      for (uint32_t idx = 0; idx < prices.size(); ++idx) {
-         auto addr = &price_levels[idx];
-         new(addr) PriceLevel;
-         price_map[prices[idx]] = addr;
+      price_levels.reserve(prices.size());
+
+      for (uint64_t idx = 0; idx < prices.size(); ++idx) {
+         if (idx > 65'535) {
+            throw std::runtime_error("price index out of range");
+         }
+         auto price_idx = static_cast<uint16_t>(idx);
+         price_levels.emplace_back(0, price_idx, 0);
+         price_map[prices[idx]] = &price_levels.back();
       }
    }
 
@@ -64,9 +86,9 @@ public:
    }
 
    ALWAYS_INLINE
-   void OrderExecuted(const ItchOrderExecuted &itch_order) const {
+   void OrderExecuted(const ItchOrderExecuted &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
+      const auto price_level = PriceLevelFromOrder(*order);
       assert(order->quantity >= itch_order.quantity);
       assert(price_level->quantity >= itch_order.quantity);
       order->quantity -= itch_order.quantity;
@@ -74,9 +96,9 @@ public:
    }
 
    ALWAYS_INLINE
-   void OrderCancel(const ItchOrderCancel &itch_order) const {
+   void OrderCancel(const ItchOrderCancel &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
+      const auto price_level = PriceLevelFromOrder(*order);
       assert(order->quantity > itch_order.quantity);
       assert(price_level->quantity > itch_order.quantity);
       order->quantity -= itch_order.quantity;
@@ -84,7 +106,7 @@ public:
    }
 
    ALWAYS_INLINE
-   void OrderDelete(const ItchOrderDelete &itch_order) const {
+   void OrderDelete(const ItchOrderDelete &itch_order) {
       OrderDeleteImpl(itch_order);
    }
 
@@ -103,12 +125,36 @@ public:
    }
 
    [[nodiscard]] ALWAYS_INLINE
-   PriceLevel *PriceLevelFromPrice(const ItchOrderAdd &order) {
-      return price_maps_[order.bid][order.price];
+   PriceLevel *PriceLevelFromItchOrder(const ItchOrderAdd &order) {
+      const auto bid = order.bid;
+      const auto price = order.price;
+      const auto level = prev_level_[bid];
+
+      if (!level->simd) {
+         prev_level_[bid] = price_maps_[bid][price];
+         return prev_level_[bid];
+      }
+
+      const auto ptr = prices_[bid].data();
+      const auto data = _mm256_load_si256(reinterpret_cast<__m256i *>(ptr));
+      const auto test = _mm256_set1_epi32(static_cast<int32_t>(price));
+      const auto cmp = _mm256_cmpeq_epi32(test, data);
+      const auto mask = _mm256_movemask_epi8(cmp);
+
+      if (mask == 0) {
+         prev_level_[bid] = price_maps_[bid][price];
+         return prev_level_[bid];
+      }
+
+      const auto tzcnt = __tzcnt_u32(mask);
+      const auto idx = LOOKUP_TABLE[tzcnt] + level->price_idx;
+      prev_level_[bid] = &levels_[bid][idx];
+      return prev_level_[bid];
    }
 
    [[nodiscard]] ALWAYS_INLINE
-   PriceLevel *PriceLevelFromIndex(const Order &order) const {
+   PriceLevel *PriceLevelFromOrder(const Order &order) {
+      prev_level_[order.bid] = order.level;
       return order.level;
    }
 
@@ -120,7 +166,7 @@ public:
 private:
    ALWAYS_INLINE
    void OrderAddImpl(const ItchOrderAdd &itch_order) {
-      const auto price_level = PriceLevelFromPrice(itch_order);
+      const auto price_level = PriceLevelFromItchOrder(itch_order);
       const auto order = OrderFromId(itch_order.order_id);
 
       order->level = price_level;
@@ -131,9 +177,9 @@ private:
    }
 
    ALWAYS_INLINE
-   void OrderDeleteImpl(const ItchOrderDelete &itch_order) const {
+   void OrderDeleteImpl(const ItchOrderDelete &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
+      const auto price_level = PriceLevelFromOrder(*order);
       assert(price_level->quantity >= order->quantity);
       price_level->quantity -= order->quantity;
    }
@@ -142,10 +188,8 @@ private:
 class OrderBooks {
    const nostromo::Mmap<Order> orders_mmap_;
    const nostromo::Mmap<OrderBook> order_books_mmap_;
-   const nostromo::Mmap<PriceLevel> price_levels_mmap_;
    const std::span<Order> orders_;
    const std::span<OrderBook> order_books_;
-   const std::span<PriceLevel> price_levels_;
 
 public:
    OrderBooks(
@@ -155,22 +199,16 @@ public:
       const size_t page_size = 0)
       : orders_mmap_{max_order_id + 1u, page_size},
         order_books_mmap_{max_stock_code + 1u, page_size},
-        price_levels_mmap_{CountPriceLevels(stock_prices), page_size},
         orders_{orders_mmap_.Span()},
-        order_books_{order_books_mmap_.Span()},
-        price_levels_{price_levels_mmap_.Span()} {
-      auto offset = 0u;
+        order_books_{order_books_mmap_.Span()} {
       for (auto &[stock_code, pair]: stock_prices) {
          const auto addr = &order_books_[stock_code];
-         const auto bid_prices = pair.first;
-         const auto ask_prices = pair.second;
-         const auto bid_cnt = bid_prices.size();
-         const auto ask_cnt = ask_prices.size();
-         const auto bid_levels = price_levels_.subspan(offset, bid_cnt);
-         offset += bid_cnt;
-         const auto ask_levels = price_levels_.subspan(offset, ask_cnt);
-         offset += ask_cnt;
-         new(addr) OrderBook{orders_, bid_levels, ask_levels, bid_prices, ask_prices};
+         // std::span<int32_t> b = (std::vector<int32_t>&) pair.first;
+         // const std::vector<int32_t> a = pair.first;
+         // auto foo = std::span<int32_t>(b);
+         // std::span<int32_t> bids = std::span<int32_t>(b.data(), b.end(), b.size());
+         // std::span<int32_t> asks = std::span<int32_t>(a.data(), a.size());
+         new(addr) OrderBook(orders_, b, pair.second);
       }
    }
 
@@ -182,19 +220,19 @@ public:
 
    ALWAYS_INLINE
    void OrderExecuted(const ItchOrderExecuted &order) const {
-      const auto &order_book = order_books_[order.stock_code];
+      auto &order_book = order_books_[order.stock_code];
       order_book.OrderExecuted(order);
    }
 
    ALWAYS_INLINE
    void OrderCancel(const ItchOrderCancel &order) const {
-      const auto &order_book = order_books_[order.stock_code];
+      auto &order_book = order_books_[order.stock_code];
       order_book.OrderCancel(order);
    }
 
    ALWAYS_INLINE
    void OrderDelete(const ItchOrderDelete &order) const {
-      const auto &order_book = order_books_[order.stock_code];
+      auto &order_book = order_books_[order.stock_code];
       order_book.OrderDelete(order);
    }
 
@@ -203,16 +241,7 @@ public:
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderReplace(order);
    }
-
-private:
-   auto CountPriceLevels(auto &stock_prices) const {
-      auto cnt = 0u;
-      for (const auto &[stock_code, pair]: stock_prices) {
-         cnt += pair.first.size() + pair.second.size();
-      }
-      return cnt;
-   }
 };
-} // order_book::itch::v10
+} // order_book::itch::v12
 
-#endif //ORDER_BOOK_ITCH_V10_ORDER_BOOK_HPP
+#endif //ORDER_BOOK_ITCH_V12_ORDER_BOOK_HPP
