@@ -21,66 +21,62 @@
 #include "itch/v12/order_book.hpp"
 
 namespace order_book::itch::perf_test {
+
 class PerfTest {
    template<typename BOOKS>
    static void RunPerfTest(const std::string &fpath, const size_t page_size = 0) {
       const auto start = nostromo::TimeUtils::Now();
 
-      const auto [max_order_id, max_stock_code, stock_prices]
-            = MetadataIO::Read(fpath);
+      const auto [
+            max_order_id,
+            max_stock_code,
+            stock_prices
+      ] = MetadataIO::Read(fpath);
 
       BOOKS books{max_order_id, max_stock_code, stock_prices, page_size};
 
       const nostromo::Mmap<char> mmap{fpath};
-      auto data = mmap.Span();
+      const auto data = mmap.Span();
 
       uint64_t offset = 0;
       uint64_t order_cnt = 0;
 
       while (offset < data.size()) {
+         const auto msg_type = data[offset];
+         ++offset;
          ++order_cnt;
 
-         switch (data[offset++]) {
-            case 'A': {
-               auto order = reinterpret_cast<ItchOrderAdd *>(&data[offset]);
-               books.OrderAdd(*order);
-               offset += 23;
-               break;
-            }
+         switch (msg_type) {
+            case 'A':
             case 'F': {
-               auto order = reinterpret_cast<ItchOrderAdd *>(&data[offset]);
+               const auto order = reinterpret_cast<ItchOrderAddEnhanced *>(&data[offset]);
                books.OrderAdd(*order);
-               offset += 23;
+               offset += sizeof(ItchOrderAddEnhanced);
                break;
             }
-            case 'E': {
-               auto order = reinterpret_cast<ItchOrderExecuted *>(&data[offset]);
-               books.OrderExecuted(*order);
-               offset += 18;
-               break;
-            }
+            case 'E':
             case 'C': {
-               auto order = reinterpret_cast<ItchOrderExecuted *>(&data[offset]);
+               const auto order = reinterpret_cast<ItchOrderExecuted *>(&data[offset]);
                books.OrderExecuted(*order);
-               offset += 18;
+               offset += sizeof(ItchOrderExecuted);
                break;
             }
             case 'X': {
-               auto order = reinterpret_cast<ItchOrderCancel *>(&data[offset]);
+               const auto order = reinterpret_cast<ItchOrderCancel *>(&data[offset]);
                books.OrderCancel(*order);
-               offset += 18;
+               offset += sizeof(ItchOrderCancel);
                break;
             }
             case 'D': {
-               auto order = reinterpret_cast<ItchOrderDelete *>(&data[offset]);
+               const auto order = reinterpret_cast<ItchOrderDelete *>(&data[offset]);
                books.OrderDelete(*order);
-               offset += 14;
+               offset += sizeof(ItchOrderDelete);
                break;
             }
             case 'U': {
-               auto order = reinterpret_cast<ItchOrderReplace *>(&data[offset]);
+               const auto order = reinterpret_cast<ItchOrderReplaceEnhanced *>(&data[offset]);
                books.OrderReplace(*order);
-               offset += 26;
+               offset += sizeof(ItchOrderReplaceEnhanced);
                break;
             }
             default:
@@ -108,7 +104,7 @@ class PerfTest {
    }
 
 public:
-   static void Run(std::string &fpath) {
+   static void Run(const std::string &fpath) {
       std::cout << "processing: " << fpath << std::endl;
       // RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
       // RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
@@ -119,11 +115,12 @@ public:
       // RunPerfTest<v09::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
       // RunPerfTest<v10::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
       // RunPerfTest<v10::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      RunPerfTest<v11::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+//      RunPerfTest<v11::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
       RunPerfTest<v12::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
       RunPerfTest<v12::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_2MB);
    }
 };
+
 } // namespace order_book::itch::perf_test
 
 int main() {
@@ -135,11 +132,11 @@ int main() {
    const auto fnames = {
          //         "01302019.NASDAQ_ITCH50.sorted-bin",
          //         "01302020.NASDAQ_ITCH50.sorted-bin",
-         "12302019.NASDAQ_ITCH50.sorted-bin"
+         "12302019.NASDAQ_ITCH50"
    };
 
-   for (auto &fname: fnames) {
-      auto fpath = base_dir + fname;
+   for (const auto &fname: fnames) {
+      const auto fpath = base_dir + fname + ".preprocessed";
       order_book::itch::perf_test::PerfTest::Run(fpath);
    }
 

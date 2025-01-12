@@ -1,14 +1,14 @@
 #ifndef ORDER_BOOK_ITCH_METADATA_IO_HPP
 #define ORDER_BOOK_ITCH_METADATA_IO_HPP
 
+#include "utils.hpp"
+
+#include "nostromo/error.hpp"
+
 #include <cstdint>
 #include <fstream>
 #include <vector>
 #include <map>
-
-#include "nostromo/mmap.hpp"
-
-#include "utils.hpp"
 
 namespace order_book::itch {
 
@@ -17,7 +17,7 @@ private:
    template<typename T>
    static auto ReadInt(std::ifstream &in) {
       T obj{};
-      auto n = (std::streamsize) sizeof(T);
+      const auto n = (std::streamsize) sizeof(T);
       in.read((char *) &obj, n);
       if (in.gcount() != n) {
          throw nostromo::Error("read() failed", EX_INFO);
@@ -26,7 +26,7 @@ private:
    }
 
    static auto ReadPrices(std::ifstream &in) {
-      auto price_cnt = ReadInt<size_t>(in);
+      const auto price_cnt = ReadInt<size_t>(in);
 
       std::vector<uint32_t> prices;
       prices.reserve(price_cnt);
@@ -38,30 +38,30 @@ private:
       return prices;
    }
 
-   static void WritePrices(std::ofstream &out, auto &prices) {
-      auto price_cnt = prices.size();
-      out.write(reinterpret_cast<char *>(&price_cnt), sizeof(price_cnt));
-      for (auto price: prices) {
-         out.write(reinterpret_cast<char *>(&price), sizeof(price));
+   static void WritePrices(std::ofstream &out, const auto &prices) {
+      const auto price_cnt = prices.size();
+      out.write(reinterpret_cast<const char *>(&price_cnt), sizeof(price_cnt));
+      for (const auto price: prices) {
+         out.write(reinterpret_cast<const char *>(&price), sizeof(price));
       }
    }
 
 public:
-   static auto Read(std::string &fpath) {
-      auto in_path = Utils::RemoveExtension(fpath) + ".meta";
+   static auto Read(const std::string &fpath) {
+      const auto in_path = Utils::RemoveExtension(fpath) + ".meta";
       std::ifstream in(in_path, std::ios_base::in | std::ios_base::binary);
 
-      auto max_order_id = ReadInt<uint32_t>(in);
-      auto max_stock_code = ReadInt<uint16_t>(in);
-      auto stock_cnt = ReadInt<size_t>(in);
+      const auto max_order_id = ReadInt<uint32_t>(in);
+      const auto max_stock_code = ReadInt<uint16_t>(in);
+      const auto stock_cnt = ReadInt<size_t>(in);
 
       // stock_code -> pair<bids, asks>
       std::map<uint16_t, std::pair<std::vector<uint32_t>, std::vector<uint32_t>>> stock_prices;
 
       for (auto idx = 0u; idx < stock_cnt; ++idx) {
-         auto stock_code = ReadInt<uint16_t>(in);
-         auto bids = ReadPrices(in);
-         auto asks = ReadPrices(in);
+         const auto stock_code = ReadInt<uint16_t>(in);
+         const auto bids = ReadPrices(in);
+         const auto asks = ReadPrices(in);
          stock_prices[stock_code] = std::make_pair(bids, asks);
       }
 
@@ -69,20 +69,20 @@ public:
    }
 
    static void Write(
-         std::string &fpath,
-         uint32_t max_order_id,
-         uint16_t max_stock_code,
-         auto &stock_prices) {
-      auto out_path = Utils::RemoveExtension(fpath) + ".meta";
+         const std::string &fpath,
+         const uint32_t max_order_id,
+         const uint16_t max_stock_code,
+         const auto &stock_prices) {
+      const auto out_path = Utils::RemoveExtension(fpath) + ".meta";
       std::ofstream out(out_path, std::ios_base::out | std::ios_base::binary);
 
-      out.write(reinterpret_cast<char *>(&max_order_id), sizeof(max_order_id));
-      out.write(reinterpret_cast<char *>(&max_stock_code), sizeof(max_stock_code));
+      out.write(reinterpret_cast<const char *>(&max_order_id), sizeof(max_order_id));
+      out.write(reinterpret_cast<const char *>(&max_stock_code), sizeof(max_stock_code));
 
-      auto stock_cnt = stock_prices.size();
-      out.write(reinterpret_cast<char *>(&stock_cnt), sizeof(stock_cnt));
+      const auto stock_cnt = stock_prices.size();
+      out.write(reinterpret_cast<const char *>(&stock_cnt), sizeof(stock_cnt));
 
-      for (auto &[stock_code, pair]: stock_prices) {
+      for (const auto &[stock_code, pair]: stock_prices) {
          out.write(reinterpret_cast<const char *>(&stock_code), sizeof(stock_code));
          WritePrices(out, pair.first);
          WritePrices(out, pair.second);

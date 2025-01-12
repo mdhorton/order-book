@@ -5,3 +5,6 @@ target_link_libraries(perf_test_v01)
 
 add_executable(perf_test_v02 perf_test_v02.cpp)
 target_link_libraries(perf_test_v02)
+
+add_executable(perf_test_v03 perf_test_v03.cpp)
+target_link_libraries(perf_test_v03)

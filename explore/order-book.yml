@@ -1,0 +1,12 @@
+# micromamba env remove --name order-book
+# micromamba env create --file order-book.yml
+name: order-book
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  # analytics
+  - polars
+  # plots
+  - matplotlib
+  - seaborn

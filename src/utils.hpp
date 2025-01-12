@@ -7,8 +7,8 @@ namespace order_book {
 
 class Utils {
 public:
-   static std::string RemoveExtension(std::string &path) {
-      auto pos = path.find_last_of('.');
+   static std::string RemoveExtension(const std::string &path) {
+      const auto pos = path.find_last_of('.');
       if (pos <= 0) return path;
       return path.substr(0, pos);
    }

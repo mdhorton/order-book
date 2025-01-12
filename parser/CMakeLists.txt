@@ -9,11 +9,5 @@ target_link_libraries(
         ${EXTERNAL_DEPENDENCY_DIR}/boost/current/install/lib/libboost_iostreams.so
 )
 
-add_executable(metadata_creator metadata_creator.cpp)
-target_link_libraries(metadata_creator)
-
-add_executable(order_sorter order_sorter.cpp)
-target_link_libraries(order_sorter)
-
-add_executable(price_analyzer price_analyzer.cpp)
-target_link_libraries(price_analyzer)
+add_executable(itch_preprocessor itch_preprocessor.cpp)
+target_link_libraries(itch_preprocessor)

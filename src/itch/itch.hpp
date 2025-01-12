@@ -23,6 +23,11 @@ struct ItchOrderAdd :
    uint32_t price;
 } PACKED;
 
+struct ItchOrderAddEnhanced :
+      ItchOrderAdd {
+   uint16_t price_idx;
+} PACKED;
+
 // 18 bytes
 struct ItchOrderExecuted :
       ItchBase {
@@ -46,6 +51,11 @@ struct ItchOrderReplace :
    uint32_t new_order_id;
    uint32_t quantity;
    uint32_t price;
+} PACKED;
+
+struct ItchOrderReplaceEnhanced :
+      ItchOrderReplace {
+   uint16_t price_idx;
 } PACKED;
 
 } //namespace order_book::itch

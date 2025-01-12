@@ -11,12 +11,14 @@
 
 #include "itch/itch.hpp"
 
+// use std::vector instead of std::span for price levels.
+// this is a simplification with the same performance.
 namespace order_book::itch::v11 {
-struct alignas (4) PriceLevel {
+struct alignas(4) PriceLevel {
    uint32_t quantity;
 };
 
-struct alignas (16) Order {
+struct alignas(16) Order {
    PriceLevel *level;
    uint32_t quantity;
    uint8_t bid;
@@ -35,23 +37,23 @@ class OrderBook {
 
 public:
    OrderBook(
-      const std::span<Order> orders,
-      const std::vector<uint32_t> &bid_prices,
-      const std::vector<uint32_t> &ask_prices)
-      : orders_{orders} {
+         const std::span<Order> orders,
+         const std::vector<uint32_t> &bid_prices,
+         const std::vector<uint32_t> &ask_prices)
+         : orders_{orders} {
       InitializePrices(bid_prices, bid_levels_, price_maps_[1]);
       InitializePrices(ask_prices, ask_levels_, price_maps_[0]);
    }
 
    static void InitializePrices(
-      const std::vector<uint32_t> &prices,
-      std::vector<PriceLevel> &price_levels,
-      PRICE_MAP &price_map) {
+         const std::vector<uint32_t> &prices,
+         std::vector<PriceLevel> &price_levels,
+         PRICE_MAP &price_map) {
       price_levels.reserve(prices.size());
 
-      for (uint32_t idx = 0; idx < prices.size(); ++idx) {
+      for (const auto price: prices) {
          price_levels.push_back(PriceLevel{});
-         price_map[prices[idx]] = &price_levels.back();
+         price_map[price] = &price_levels.back();
       }
    }
 
@@ -144,14 +146,14 @@ class OrderBooks {
 
 public:
    OrderBooks(
-      auto max_order_id,
-      auto max_stock_code,
-      auto &stock_prices,
-      const size_t page_size = 0)
-      : orders_mmap_{max_order_id + 1u, page_size},
-        order_books_mmap_{max_stock_code + 1u, page_size},
-        orders_{orders_mmap_.Span()},
-        order_books_{order_books_mmap_.Span()} {
+         auto max_order_id,
+         auto max_stock_code,
+         auto &stock_prices,
+         const size_t page_size = 0)
+         : orders_mmap_{max_order_id + 1u, page_size},
+           order_books_mmap_{max_stock_code + 1u, page_size},
+           orders_{orders_mmap_.Span()},
+           order_books_{order_books_mmap_.Span()} {
       for (auto &[stock_code, pair]: stock_prices) {
          auto addr = &order_books_[stock_code];
          new(addr) OrderBook(orders_, pair.first, pair.second);
