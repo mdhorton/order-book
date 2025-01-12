@@ -164,7 +164,6 @@ public:
            price_levels_{price_levels_mmap_.Span()} {
       auto offset = 0u;
       for (auto &[stock_code, pair]: stock_prices) {
-         const auto addr = &order_books_[stock_code];
          const auto bid_prices = pair.first;
          const auto ask_prices = pair.second;
          const auto bid_cnt = bid_prices.size();
@@ -173,6 +172,7 @@ public:
          offset += bid_cnt;
          const auto ask_levels = price_levels_.subspan(offset, ask_cnt);
          offset += ask_cnt;
+         const auto addr = &order_books_[stock_code];
          new(addr) OrderBook{orders_, bid_levels, ask_levels, bid_prices, ask_prices};
       }
    }

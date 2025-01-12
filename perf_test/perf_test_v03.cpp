@@ -10,6 +10,7 @@
 #include "itch/v10/order_book.hpp"
 #include "itch/v11/order_book.hpp"
 #include "itch/v12/order_book.hpp"
+#include "itch/v13/order_book.hpp"
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
@@ -110,12 +111,13 @@ public:
          // RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
          // RunPerfTest<v05::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
          // RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-         // RunPerfTest<v07::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-         // RunPerfTest<v08::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-         RunPerfTest<v09::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
-         RunPerfTest<v10::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
-         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+//         RunPerfTest<v07::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+//         RunPerfTest<v08::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+//         RunPerfTest<v09::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+//         RunPerfTest<v10::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+//         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
          RunPerfTest<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>(fpath + "-sorted-idx", page_size);
+         RunPerfTest<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>(fpath + "-sorted-idx", page_size);
       }
    }
 };
