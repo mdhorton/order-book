@@ -1,12 +1,3 @@
-#include <cstdint>
-#include <stdexcept>
-#include <string>
-#include <iostream>
-
-#include "nostromo/mmap.hpp"
-#include "nostromo/time_utils.hpp"
-#include "nostromo/thread_utils.hpp"
-
 #include "itch/itch.hpp"
 #include "itch/metadata_io.hpp"
 #include "itch/v02/order_book.hpp"
@@ -20,10 +11,21 @@
 #include "itch/v11/order_book.hpp"
 #include "itch/v12/order_book.hpp"
 
+#include "nostromo/mmap.hpp"
+#include "nostromo/time_utils.hpp"
+#include "nostromo/huge_page.hpp"
+#include "nostromo/thread_utils.hpp"
+
+#include <fmt/format.h>
+
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+
 namespace order_book::itch::perf_test {
 
 class PerfTest {
-   template<typename BOOKS>
+   template<typename BOOKS, typename ADD, typename REPLACE>
    static void RunPerfTest(const std::string &fpath, const size_t page_size = 0) {
       const auto start = nostromo::TimeUtils::Now();
 
@@ -49,9 +51,9 @@ class PerfTest {
          switch (msg_type) {
             case 'A':
             case 'F': {
-               const auto order = reinterpret_cast<ItchOrderAddEnhanced *>(&data[offset]);
+               const auto order = reinterpret_cast<ADD *>(&data[offset]);
                books.OrderAdd(*order);
-               offset += sizeof(ItchOrderAddEnhanced);
+               offset += sizeof(ADD);
                break;
             }
             case 'E':
@@ -74,50 +76,47 @@ class PerfTest {
                break;
             }
             case 'U': {
-               const auto order = reinterpret_cast<ItchOrderReplaceEnhanced *>(&data[offset]);
+               const auto order = reinterpret_cast<REPLACE *>(&data[offset]);
                books.OrderReplace(*order);
-               offset += sizeof(ItchOrderReplaceEnhanced);
+               offset += sizeof(REPLACE);
                break;
             }
             default:
-               throw std::runtime_error(
-                     "unexpected msg_type at offset: " +
-                     std::to_string(offset - 1)
-               );
+               throw std::runtime_error("unsupported msg_type at offset: " + std::to_string(offset - 1));
          }
       }
 
-      const auto stop = nostromo::TimeUtils::Now();
-      const auto elap = stop - start;
-      const auto elap_d = static_cast<double>(elap.count());
-      const auto order_cnt_d = static_cast<double>(order_cnt);
-      const auto ops = static_cast<uint64_t>(order_cnt_d / (elap_d / 1'000'000'000.0));
-      const auto npo = elap_d / order_cnt_d;
+      const auto elap = nostromo::TimeUtils::Now() - start;
+      const auto ops = Utils::Ops(elap.count(), order_cnt);
+      const auto npo = static_cast<double>(elap.count()) / static_cast<double>(order_cnt);
 
-      std::cout
-            << "RunPerfTest" << std::endl
-            << "order count: " << order_cnt << std::endl
-            << "elapsed: " << elap.count() << std::endl
-            << "orders/sec: " << ops << std::endl
-            << "nanos/order: " << npo << std::endl
-            << std::endl;
+      fmt::print("{}", fmt::format(
+            std::locale("en_US.UTF-8"),
+            "order count: {:L}\n"
+            "elapsed: {:L} ns\n"
+            "orders/sec: {:L}\n"
+            "nanos/order: {:.2f}\n\n",
+            order_cnt, elap.count(), ops, npo
+      ));
    }
 
 public:
    static void Run(const std::string &fpath) {
-      std::cout << "processing: " << fpath << std::endl;
-      // RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v05::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v07::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v08::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v09::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v10::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v10::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-//      RunPerfTest<v11::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      RunPerfTest<v12::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      RunPerfTest<v12::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_2MB);
+      fmt::print("processing: {}\n", fpath);
+
+      const auto page_sizes = {nostromo::HugePage::SIZE_1GB};
+      for (const auto page_size: page_sizes) {
+         // RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+         // RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+         // RunPerfTest<v05::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+         // RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+         // RunPerfTest<v07::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+         // RunPerfTest<v08::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+         RunPerfTest<v09::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+         RunPerfTest<v10::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+         RunPerfTest<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>(fpath + "-sorted-idx", page_size);
+      }
    }
 };
 
@@ -125,18 +124,10 @@ public:
 
 int main() {
    nostromo::ThreadUtils::SetAffinity(23);
+   namespace itch = order_book::itch;
 
-   std::cout.imbue(std::locale(""));
-   const std::string base_dir = "/remote/data/nasdaq-itch/";
-
-   const auto fnames = {
-         //         "01302019.NASDAQ_ITCH50.sorted-bin",
-         //         "01302020.NASDAQ_ITCH50.sorted-bin",
-         "12302019.NASDAQ_ITCH50"
-   };
-
-   for (const auto &fname: fnames) {
-      const auto fpath = base_dir + fname + ".preprocessed";
+   for (const auto &fname: itch::DATA_FILE_NAMES) {
+      const auto fpath = itch::DATA_DIR_BASE + fname + ".bin";
       order_book::itch::perf_test::PerfTest::Run(fpath);
    }
 

@@ -5,6 +5,7 @@
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
+#include "nostromo/huge_page.hpp"
 #include "nostromo/thread_utils.hpp"
 
 #include "itch/itch.hpp"
@@ -18,7 +19,6 @@
 #include "itch/v09/order_book.hpp"
 #include "itch/v10/order_book.hpp"
 #include "itch/v11/order_book.hpp"
-#include "itch/v12/order_book.hpp"
 
 namespace order_book::itch::perf_test {
 class PerfTest {
@@ -110,18 +110,15 @@ class PerfTest {
 public:
    static void Run(std::string &fpath) {
       std::cout << "processing: " << fpath << std::endl;
-      // RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v05::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v07::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v08::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v09::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v10::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      // RunPerfTest<v10::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      RunPerfTest<v11::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      RunPerfTest<v12::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-      RunPerfTest<v12::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_2MB);
+      RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePage::SIZE_1GB);
+      RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePage::SIZE_1GB);
+      RunPerfTest<v05::OrderBooks>(fpath, nostromo::HugePage::SIZE_1GB);
+      RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePage::SIZE_1GB);
+      RunPerfTest<v07::OrderBooks>(fpath, nostromo::HugePage::SIZE_1GB);
+      RunPerfTest<v08::OrderBooks>(fpath, nostromo::HugePage::SIZE_1GB);
+      RunPerfTest<v09::OrderBooks>(fpath, nostromo::HugePage::SIZE_1GB);
+      RunPerfTest<v10::OrderBooks>(fpath, nostromo::HugePage::SIZE_1GB);
+      RunPerfTest<v11::OrderBooks>(fpath, nostromo::HugePage::SIZE_1GB);
    }
 };
 } // namespace order_book::itch::perf_test

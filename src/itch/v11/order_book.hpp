@@ -1,19 +1,21 @@
 #ifndef ORDER_BOOK_ITCH_V11_ORDER_BOOK_HPP
 #define ORDER_BOOK_ITCH_V11_ORDER_BOOK_HPP
 
-#include <cstdint>
-#include <cassert>
-#include <span>
-
-#include <boost/unordered/unordered_flat_map.hpp>
+#include "itch/itch.hpp"
 
 #include "nostromo/mmap.hpp"
 
-#include "itch/itch.hpp"
+#include <boost/unordered/unordered_flat_map.hpp>
 
+#include <cstdint>
+#include <cassert>
+#include <vector>
+#include <span>
+
+// removed noexcept.
 // use std::vector instead of std::span for price levels.
-// this is a simplification with the same performance.
 namespace order_book::itch::v11 {
+
 struct alignas(4) PriceLevel {
    uint32_t quantity;
 };
@@ -46,9 +48,9 @@ public:
    }
 
    static void InitializePrices(
-         const std::vector<uint32_t> &prices,
-         std::vector<PriceLevel> &price_levels,
-         PRICE_MAP &price_map) {
+         const auto &prices,
+         auto &price_levels,
+         auto &price_map) {
       price_levels.reserve(prices.size());
 
       for (const auto price: prices) {
@@ -106,8 +108,8 @@ public:
       return price_maps_[order.bid][order.price];
    }
 
-   [[nodiscard]] ALWAYS_INLINE
-   PriceLevel *PriceLevelFromIndex(const Order &order) const {
+   [[nodiscard]] ALWAYS_INLINE static
+   PriceLevel *PriceLevelFromIndex(const Order &order) {
       return order.level;
    }
 

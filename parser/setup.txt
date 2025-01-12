@@ -1,2 +1,0 @@
-micromamba env remove --name order_book
-micromamba env create --file order_book.yml

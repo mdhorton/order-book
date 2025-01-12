@@ -1,24 +1,26 @@
 #ifndef ORDER_BOOK_ITCH_V09_ORDER_BOOK_HPP
 #define ORDER_BOOK_ITCH_V09_ORDER_BOOK_HPP
 
-#include <cstdint>
-#include <cassert>
-#include <span>
-
-#include <boost/unordered/unordered_flat_map.hpp>
+#include "itch/itch.hpp"
 
 #include "nostromo/mmap.hpp"
 
-#include "itch/itch.hpp"
+#include <boost/unordered/unordered_flat_map.hpp>
 
+#include <cstdint>
+#include <cassert>
+#include <vector>
+#include <span>
+
+// array of 2 price maps (bid/ask)
 namespace order_book::itch::v09 {
 
-struct PriceLevel {
+struct alignas(4) PriceLevel {
    uint32_t quantity;
 };
 
-struct Order {
-   PriceLevel* level;
+struct alignas(16) Order {
+   PriceLevel *level;
    uint32_t quantity;
    uint8_t bid;
 };
@@ -40,21 +42,21 @@ public:
          const std::span<PriceLevel> bid_levels,
          const std::span<PriceLevel> ask_levels,
          const std::vector<uint32_t> &bid_prices,
-         const std::vector<uint32_t> &ask_prices) :
-         orders_{orders},
-         bid_levels_{bid_levels},
-         ask_levels_{ask_levels} {
-      InitializePrices(bid_levels_, bid_prices, price_maps_[1]);
-      InitializePrices(ask_levels_, ask_prices, price_maps_[0]);
+         const std::vector<uint32_t> &ask_prices)
+         : orders_{orders},
+           bid_levels_{bid_levels},
+           ask_levels_{ask_levels} {
+      InitializePrices(bid_prices, bid_levels_, price_maps_[1]);
+      InitializePrices(ask_prices, ask_levels_, price_maps_[0]);
    }
 
    static void InitializePrices(
-         const std::span<PriceLevel> price_levels,
-         const std::vector<uint32_t> &prices,
-         PRICE_MAP &price_map) {
-      for (uint32_t idx = 0; idx < prices.size(); ++idx) {
+         const auto &prices,
+         const auto price_levels,
+         auto &price_map) {
+      for (uint32_t idx = 0u; idx < prices.size(); ++idx) {
          auto addr = &price_levels[idx];
-         new (addr) PriceLevel;
+         new(addr) PriceLevel;
          price_map[prices[idx]] = addr;
       }
    }
@@ -108,8 +110,8 @@ public:
       return price_maps_[order.bid][order.price];
    }
 
-   [[nodiscard]] ALWAYS_INLINE
-   PriceLevel *PriceLevelFromIndex(const Order &order) const {
+   [[nodiscard]] ALWAYS_INLINE static
+   PriceLevel *PriceLevelFromIndex(const Order &order) {
       return order.level;
    }
 
@@ -153,7 +155,7 @@ public:
          auto max_order_id,
          auto max_stock_code,
          auto &stock_prices,
-         auto page_size = 0)
+         const size_t page_size = 0)
          : orders_mmap_{max_order_id + 1u, page_size},
            order_books_mmap_{max_stock_code + 1u, page_size},
            price_levels_mmap_{CountPriceLevels(stock_prices), page_size},

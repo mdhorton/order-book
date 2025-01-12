@@ -1,9 +1,9 @@
 #ifndef ORDER_BOOK_ITCH_ITCH_RAW_HPP
 #define ORDER_BOOK_ITCH_ITCH_RAW_HPP
 
-#include <linux/types.h>
-
 #include "common.hpp"
+
+#include <linux/types.h>
 
 namespace order_book::itch {
 
@@ -13,6 +13,7 @@ struct ItchRawBase {
    __u8 timestamp[6];
    __be64 order_id;
 } PACKED;
+
 
 struct ItchRawOrderAdd :
       ItchRawBase {

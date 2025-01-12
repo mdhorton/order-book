@@ -8,8 +8,9 @@
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
 
+#include <fmt/format.h>
+
 #include <fstream>
-#include <iostream>
 
 namespace order_book::itch {
 
@@ -27,28 +28,28 @@ public:
    explicit ItchPreProcessor(const std::string &fpath)
          : fpath_{fpath},
            mmap_{fpath} {
-      std::cout << "processing: " << fpath << std::endl;
+      fmt::print("processing: {}\n", fpath);
    }
 
    void Run() {
       const auto start = nostromo::TimeUtils::Now();
 
       ReadOrders();
-      ExportOrders();
+      ExportOrdersSorted("-sorted");
+      ExportOrdersSortedIdx("-sorted-idx");
       MetadataIO::Write(fpath_, max_order_id_, max_stock_code_, stock_prices_);
 
-      const auto stop = nostromo::TimeUtils::Now();
-      const auto elap = stop - start;
-      const auto elap_d = static_cast<double>(elap.count());
-      const auto order_cnt_d = static_cast<double>(order_cnt_);
-      const auto ops = static_cast<uint64_t>(order_cnt_d / (elap_d / 1'000'000'000.0));
+      const auto elap = nostromo::TimeUtils::Now() - start;
+      const auto ops = Utils::Ops(elap.count(), order_cnt_);
 
-      std::cout
-            << "stock count: " << stock_orders_.size() << std::endl
-            << "order count: " << order_cnt_ << std::endl
-            << "elapsed: " << elap.count() << std::endl
-            << "orders/sec: " << ops << std::endl
-            << std::endl;
+      fmt::print("{}", fmt::format(
+            std::locale("en_US.UTF-8"),
+            "stock count: {:L}\n"
+            "order count: {:L}\n"
+            "elapsed: {:L} ns\n"
+            "orders/sec: {:L}\n\n",
+            stock_orders_.size(), order_cnt_, elap.count(), ops
+      ));
    }
 
 private:
@@ -75,7 +76,7 @@ private:
          switch (msg_type) {
             case 'A':
             case 'F': {
-               const auto order = (ItchOrderAdd *) &data[offset];
+               const auto order = reinterpret_cast<ItchOrderAdd *>(&data[offset]);
                auto &orders = stock_orders_[order->stock_code];
                orders.emplace_back(msg_type, order);
 
@@ -93,7 +94,7 @@ private:
             }
             case 'E':
             case 'C': {
-               const auto order = (ItchOrderExecuted *) &data[offset];
+               const auto order = reinterpret_cast<ItchOrderExecuted *>(&data[offset]);
                auto &orders = stock_orders_[order->stock_code];
                orders.emplace_back(msg_type, order);
 
@@ -101,7 +102,7 @@ private:
                break;
             }
             case 'X': {
-               const auto order = (ItchOrderCancel *) &data[offset];
+               const auto order = reinterpret_cast<ItchOrderCancel *>(&data[offset]);
                auto &orders = stock_orders_[order->stock_code];
                orders.emplace_back(msg_type, order);
 
@@ -109,7 +110,7 @@ private:
                break;
             }
             case 'D': {
-               const auto order = (ItchOrderDelete *) &data[offset];
+               const auto order = reinterpret_cast<ItchOrderDelete *>(&data[offset]);
                auto &orders = stock_orders_[order->stock_code];
                orders.emplace_back(msg_type, order);
 
@@ -117,7 +118,7 @@ private:
                break;
             }
             case 'U': {
-               const auto order = (ItchOrderReplace *) &data[offset];
+               const auto order = reinterpret_cast<ItchOrderReplace *>(&data[offset]);
                auto &orders = stock_orders_[order->stock_code];
                orders.emplace_back(msg_type, order);
 
@@ -140,69 +141,104 @@ private:
       }
    }
 
-   auto PriceMap(const auto &prices) {
-      MAP<uint32_t, uint16_t> map{};
-      uint16_t idx = 0u;
-      for (const auto price: prices) {
-         map[price] = idx;
-         ++idx;
+   void ExportOrdersSorted(const std::string &fext) {
+      std::ofstream out(fpath_ + fext, std::ios_base::out | std::ios_base::binary);
+
+      for (const auto &[stock_code, orders]: stock_orders_) {
+         for (const auto &[msg_type, order]: orders) {
+            out.write((const char *) &msg_type, sizeof(char));
+
+            switch (msg_type) {
+               case 'A':
+               case 'F':
+                  out.write((const char *) order, sizeof(ItchOrderAdd));
+                  break;
+               case 'E':
+               case 'C':
+                  out.write((const char *) order, sizeof(ItchOrderExecuted));
+                  break;
+               case 'X':
+                  out.write((const char *) order, sizeof(ItchOrderCancel));
+                  break;
+               case 'D':
+                  out.write((const char *) order, sizeof(ItchOrderDelete));
+                  break;
+               case 'U':
+                  out.write((const char *) order, sizeof(ItchOrderReplace));
+                  break;
+               default:
+                  throw std::runtime_error("unsupported msg_type: " + std::to_string(msg_type));
+            }
+         }
       }
-      return map;
+
+      if (out.fail()) {
+         throw nostromo::Error("write() failed", EX_INFO);
+      }
    }
 
-   void ExportOrders() {
-      const auto out_path = Utils::RemoveExtension(fpath_) + ".preprocessed";
-      std::ofstream out_bin(out_path, std::ios_base::out | std::ios_base::binary);
+   void ExportOrdersSortedIdx(const std::string &fext) {
+      const auto set2map = [](const auto &prices) {
+         MAP<uint32_t, uint16_t> map{};
+         uint16_t idx = 0u;
+         for (const auto price: prices) {
+            map[price] = idx;
+            ++idx;
+         }
+         return map;
+      };
+
+      std::ofstream out(fpath_ + fext, std::ios_base::out | std::ios_base::binary);
 
       for (const auto &[stock_code, orders]: stock_orders_) {
          const auto &[bid_set, ask_set] = stock_prices_[stock_code];
-         auto bids = PriceMap(bid_set);
-         auto asks = PriceMap(ask_set);
+         auto bids = set2map(bid_set);
+         auto asks = set2map(ask_set);
 
          for (const auto &[msg_type, order]: orders) {
-            out_bin.write((const char *) &msg_type, sizeof(msg_type)); // TODO: sizeof()
+            out.write((const char *) &msg_type, sizeof(char));
 
             switch (msg_type) {
                case 'A':
                case 'F': {
                   const auto o = (const ItchOrderAdd *) order;
                   const auto price_idx = o->bid ? bids[o->price] : asks[o->price];
-                  const auto enhanced = ItchOrderAddEnhanced{
-                        {{o->stock_code, o->timestamp, o->order_id},
+                  const auto enhanced = ItchOrderAddIdx{
+                        {{o->timestamp, o->order_id, o->stock_code},
                          o->bid, o->quantity, o->price},
                         price_idx
                   };
-                  out_bin.write((const char *) &enhanced, sizeof(ItchOrderAddEnhanced));
+                  out.write((const char *) &enhanced, sizeof(ItchOrderAddIdx));
                   break;
                }
                case 'E':
                case 'C':
-                  out_bin.write((const char *) order, sizeof(ItchOrderExecuted));
+                  out.write((const char *) order, sizeof(ItchOrderExecuted));
                   break;
                case 'X':
-                  out_bin.write((const char *) order, sizeof(ItchOrderCancel));
+                  out.write((const char *) order, sizeof(ItchOrderCancel));
                   break;
                case 'D':
-                  out_bin.write((const char *) order, sizeof(ItchOrderDelete));
+                  out.write((const char *) order, sizeof(ItchOrderDelete));
                   break;
                case 'U': {
                   const auto o = (const ItchOrderReplace *) order;
                   const auto price_idx = bid_map_[o->order_id] ? bids[o->price] : asks[o->price];
-                  const auto enhanced = ItchOrderReplaceEnhanced{
-                        {{o->stock_code, o->timestamp, o->order_id},
+                  const auto enhanced = ItchOrderReplaceIdx{
+                        {{o->timestamp, o->order_id, o->stock_code},
                          o->new_order_id, o->quantity, o->price},
                         price_idx
                   };
-                  out_bin.write((const char *) &enhanced, sizeof(ItchOrderReplaceEnhanced));
+                  out.write((const char *) &enhanced, sizeof(ItchOrderReplaceIdx));
                   break;
                }
                default:
-                  throw std::runtime_error("unexpected msg_type: " + std::to_string(msg_type));
+                  throw std::runtime_error("unsupported msg_type: " + std::to_string(msg_type));
             }
          }
       }
 
-      if (out_bin.fail()) {
+      if (out.fail()) {
          throw nostromo::Error("write() failed", EX_INFO);
       }
    }
@@ -211,17 +247,11 @@ private:
 } // namespace order_book::itch
 
 int main() {
-   std::cout.imbue(std::locale(""));
-   const std::string base_dir = "/remote/data/nasdaq-itch/";
+   namespace itch = order_book::itch;
 
-   const auto fnames = {
-//         "01302019.NASDAQ_ITCH50.bin",
-//         "01302020.NASDAQ_ITCH50.bin",
-         "12302019.NASDAQ_ITCH50.bin"
-   };
-
-   for (const auto &fname: fnames) {
-      order_book::itch::ItchPreProcessor{base_dir + fname}.Run();
+   for (const auto &fname: itch::DATA_FILE_NAMES) {
+      const auto fpath = itch::DATA_DIR_BASE + fname + ".bin";
+      order_book::itch::ItchPreProcessor{fpath}.Run();
    }
 
    return 0;
