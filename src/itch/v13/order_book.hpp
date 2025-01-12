@@ -47,7 +47,7 @@ public:
          const auto &prices,
          auto &price_levels) {
       for (uint32_t idx = 0u; idx < prices.size(); ++idx) {
-         auto addr = &price_levels[idx];
+         const auto addr = &price_levels[idx];
          new(addr) PriceLevel;
       }
    }

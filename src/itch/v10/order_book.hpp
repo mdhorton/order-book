@@ -55,7 +55,7 @@ public:
          const auto price_levels,
          auto &price_map) {
       for (uint32_t idx = 0u; idx < prices.size(); ++idx) {
-         auto addr = &price_levels[idx];
+         const auto addr = &price_levels[idx];
          new(addr) PriceLevel;
          price_map[prices[idx]] = addr;
       }
