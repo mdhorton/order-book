@@ -193,9 +193,9 @@ class OrderBooks {
 
 public:
    OrderBooks(
-      auto max_order_id,
-      auto max_stock_code,
-      auto &stock_prices,
+      const auto max_order_id,
+      const auto max_stock_code,
+      const auto &stock_prices,
       const size_t page_size = 0)
       : orders_mmap_{max_order_id + 1u, page_size},
         order_books_mmap_{max_stock_code + 1u, page_size},

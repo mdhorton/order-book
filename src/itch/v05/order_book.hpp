@@ -1,20 +1,25 @@
 #ifndef ORDER_BOOK_ITCH_V05_ORDER_BOOK_HPP
 #define ORDER_BOOK_ITCH_V05_ORDER_BOOK_HPP
 
-#include <cstdint>
-#include <cassert>
-#include <span>
-
-#include <boost/unordered/unordered_flat_map.hpp>
+#include "itch/itch.hpp"
 
 #include "nostromo/mmap.hpp"
 
-#include "itch/itch.hpp"
+#include <boost/unordered/unordered_flat_map.hpp>
 
+#include <cstdint>
+#include <cassert>
+#include <vector>
+#include <span>
+
+// removed price and added idx.
+// removed a few lines of unnecessary code.
 namespace order_book::itch::v05 {
 
-template<typename K, typename V>
-using MAP = boost::unordered_flat_map<K, V>;
+struct PriceLevel {
+   uint32_t quantity;
+   uint32_t idx;
+};
 
 struct Order {
    uint32_t quantity;
@@ -22,18 +27,15 @@ struct Order {
    uint16_t bid;
 };
 
-struct PriceLevel {
-   uint32_t quantity;
-   uint32_t idx;
-};
+using PRICE_MAP = boost::unordered_flat_map<uint32_t, PriceLevel *>;
 
 class OrderBook {
    std::span<Order> orders_;
 
    std::vector<PriceLevel> bid_levels_{};
    std::vector<PriceLevel> ask_levels_{};
-   MAP<uint32_t, PriceLevel *> bid_price_map_{};
-   MAP<uint32_t, PriceLevel *> ask_price_map_{};
+   PRICE_MAP bid_price_map_{};
+   PRICE_MAP ask_price_map_{};
    ItchOrderAdd tmp_order_add_{};
    ItchOrderDelete tmp_order_delete_{};
 
@@ -53,16 +55,18 @@ public:
          auto &price_map) {
       price_levels.reserve(prices.size());
 
-      for (uint32_t idx =0; idx < prices.size(); ++idx) {
+      for (uint32_t idx = 0; idx < prices.size(); ++idx) {
          price_levels.push_back(PriceLevel{0, idx});
          price_map[prices[idx]] = &price_levels.back();
       }
    }
 
+   ALWAYS_INLINE
    void OrderAdd(const ItchOrderAdd &itch_order) {
       OrderAddImpl(itch_order);
    }
 
+   ALWAYS_INLINE
    void OrderExecuted(const ItchOrderExecuted &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
       const auto price_level = PriceLevelFromIndex(order->bid, order->price_idx);
@@ -72,6 +76,7 @@ public:
       price_level->quantity -= itch_order.quantity;
    }
 
+   ALWAYS_INLINE
    void OrderCancel(const ItchOrderCancel &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
       const auto price_level = PriceLevelFromIndex(order->bid, order->price_idx);
@@ -81,10 +86,12 @@ public:
       price_level->quantity -= itch_order.quantity;
    }
 
+   ALWAYS_INLINE
    void OrderDelete(const ItchOrderDelete &itch_order) {
       OrderDeleteImpl(itch_order);
    }
 
+   ALWAYS_INLINE
    void OrderReplace(const ItchOrderReplace &itch_order) {
       tmp_order_delete_.stock_code = itch_order.stock_code;
       tmp_order_delete_.order_id = itch_order.order_id;
@@ -148,40 +155,45 @@ private:
 
 public:
    explicit OrderBooks(
-         auto max_order_id,
-         auto max_stock_code,
-         auto &stock_prices,
-         size_t page_size = 0)
+         const auto max_order_id,
+         const auto max_stock_code,
+         const auto &stock_prices,
+         const size_t page_size = 0u)
          : orders_mmap_{max_order_id + 1u, page_size},
            order_books_mmap_{max_stock_code + 1u, page_size},
            orders_{orders_mmap_.Span()},
            order_books_{order_books_mmap_.Span()} {
       for (auto &[stock_code, pair]: stock_prices) {
-         auto addr = &order_books_[stock_code];
+         const auto addr = &order_books_[stock_code];
          new(addr) OrderBook(orders_, pair.first, pair.second);
       }
    }
 
+   ALWAYS_INLINE
    void OrderAdd(const ItchOrderAdd &order) {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderAdd(order);
    }
 
+   ALWAYS_INLINE
    void OrderExecuted(const ItchOrderExecuted &order) {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderExecuted(order);
    }
 
+   ALWAYS_INLINE
    void OrderCancel(const ItchOrderCancel &order) {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderCancel(order);
    }
 
+   ALWAYS_INLINE
    void OrderDelete(const ItchOrderDelete &order) {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderDelete(order);
    }
 
+   ALWAYS_INLINE
    void OrderReplace(const ItchOrderReplace &order) {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderReplace(order);

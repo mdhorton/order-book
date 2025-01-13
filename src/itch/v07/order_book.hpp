@@ -12,6 +12,8 @@
 #include <vector>
 #include <span>
 
+// store a pointer to the price level on each order.
+// moved bid back to order->bid.
 namespace order_book::itch::v07 {
 
 struct alignas(4) PriceLevel {
@@ -147,16 +149,16 @@ class OrderBooks {
 
 public:
    explicit OrderBooks(
-         auto max_order_id,
-         auto max_stock_code,
-         auto &stock_prices,
-         const size_t page_size = 0)
+         const auto max_order_id,
+         const auto max_stock_code,
+         const auto &stock_prices,
+         const size_t page_size = 0u)
          : orders_mmap_{max_order_id + 1u, page_size},
            order_books_mmap_{max_stock_code + 1u, page_size},
            orders_{orders_mmap_.Span()},
            order_books_{order_books_mmap_.Span()} {
       for (auto &[stock_code, pair]: stock_prices) {
-         auto addr = &order_books_[stock_code];
+         const auto addr = &order_books_[stock_code];
          new(addr) OrderBook(orders_, pair.first, pair.second);
       }
    }

@@ -1,21 +1,23 @@
 #ifndef ORDER_BOOK_ITCH_V03_ORDER_BOOK_HPP
 #define ORDER_BOOK_ITCH_V03_ORDER_BOOK_HPP
 
-#include <cstdint>
-#include <cassert>
-#include <span>
-
-#include <boost/unordered/unordered_flat_map.hpp>
+#include "itch/itch.hpp"
 
 #include "nostromo/mmap.hpp"
 
-#include "common.hpp"
-#include "itch/itch.hpp"
+#include <boost/unordered/unordered_flat_map.hpp>
+
+#include <cstdint>
+#include <cassert>
+#include <vector>
+#include <span>
 
 namespace order_book::itch::v03 {
 
-template<typename K, typename V>
-using MAP = boost::unordered_flat_map<K, V>;
+struct PriceLevel {
+   uint32_t quantity;
+   uint32_t price;
+};
 
 struct Order {
    uint32_t quantity;
@@ -23,38 +25,35 @@ struct Order {
    uint16_t bid;
 };
 
-struct PriceLevel {
-   uint32_t price;
-   uint32_t quantity;
-};
+using PRICE_MAP = boost::unordered_flat_map<uint32_t, PriceLevel *>;
 
 class OrderBook {
-   std::span<Order> orders_;
+   const std::span<Order> orders_;
 
    std::vector<PriceLevel> bid_levels_{};
    std::vector<PriceLevel> ask_levels_{};
-   MAP<uint32_t, PriceLevel *> bid_price_map_{};
-   MAP<uint32_t, PriceLevel *> ask_price_map_{};
+   PRICE_MAP bid_price_map_{};
+   PRICE_MAP ask_price_map_{};
    ItchOrderAdd tmp_order_add_{};
    ItchOrderDelete tmp_order_delete_{};
 
 public:
    OrderBook(
-         auto orders,
-         auto &bid_prices,
-         auto &ask_prices) :
-         orders_{orders} {
-      InitializePrices(bid_levels_, bid_prices, bid_price_map_);
-      InitializePrices(ask_levels_, ask_prices, ask_price_map_);
+         const auto orders,
+         const auto &bid_prices,
+         const auto &ask_prices)
+         : orders_{orders} {
+      InitializePrices(bid_prices, bid_levels_, bid_price_map_);
+      InitializePrices(ask_prices, ask_levels_, ask_price_map_);
    }
 
    static void InitializePrices(
+         const auto &prices,
          auto &price_levels,
-         auto &prices,
          auto &price_map) {
       price_levels.reserve(prices.size());
 
-      for (auto price: prices) {
+      for (const auto price: prices) {
          PriceLevel level{};
          level.price = price;
          price_levels.push_back(level);
@@ -119,16 +118,12 @@ public:
    }
 
    [[nodiscard]] ALWAYS_INLINE
-   PriceLevel *PriceLevelFromPrice(
-         const uint8_t bid,
-         const uint32_t price) {
+   PriceLevel *PriceLevelFromPrice(const uint8_t bid, const uint32_t price) {
       return bid ? bid_price_map_[price] : ask_price_map_[price];
    }
 
    [[nodiscard]] ALWAYS_INLINE
-   PriceLevel *PriceLevelFromIndex(
-         const uint8_t bid,
-         const uint32_t idx) {
+   PriceLevel *PriceLevelFromIndex(const uint8_t bid, const uint32_t idx) {
       return bid ? &bid_levels_[idx] : &ask_levels_[idx];
    }
 
@@ -140,8 +135,8 @@ public:
 private:
    ALWAYS_INLINE
    void OrderAddImpl(const ItchOrderAdd &itch_order) {
-      auto price_level = PriceLevelFromPrice(itch_order.bid, itch_order.price);
-      auto order = OrderFromId(itch_order.order_id);
+      const auto price_level = PriceLevelFromPrice(itch_order.bid, itch_order.price);
+      const auto order = OrderFromId(itch_order.order_id);
 
       order->quantity = itch_order.quantity;
       order->bid = itch_order.bid;
@@ -153,15 +148,12 @@ private:
    void OrderDeleteImpl(const ItchOrderDelete &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
       const auto price_level = PriceLevelFromIndex(order->bid, order->price_idx);
-
       assert(price_level->quantity >= order->quantity);
-
       price_level->quantity -= order->quantity;
    }
 };
 
 class OrderBooks {
-private:
    const nostromo::Mmap<Order> orders_mmap_;
    const nostromo::Mmap<OrderBook> order_books_mmap_;
    const std::span<Order> orders_;
@@ -169,16 +161,16 @@ private:
 
 public:
    explicit OrderBooks(
-         auto max_order_id,
-         auto max_stock_code,
-         auto &stock_prices,
-         size_t page_size = 0)
+         const auto max_order_id,
+         const auto max_stock_code,
+         const auto &stock_prices,
+         const size_t page_size = 0u)
          : orders_mmap_{max_order_id + 1u, page_size},
            order_books_mmap_{max_stock_code + 1u, page_size},
            orders_{orders_mmap_.Span()},
            order_books_{order_books_mmap_.Span()} {
       for (auto &[stock_code, pair]: stock_prices) {
-         auto addr = &order_books_[stock_code];
+         const auto addr = &order_books_[stock_code];
          new(addr) OrderBook(orders_, pair.first, pair.second);
       }
    }

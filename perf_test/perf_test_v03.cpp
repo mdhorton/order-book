@@ -11,6 +11,7 @@
 #include "itch/v11/order_book.hpp"
 #include "itch/v12/order_book.hpp"
 #include "itch/v13/order_book.hpp"
+#include "itch/v14/order_book.hpp"
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
@@ -27,7 +28,7 @@ namespace order_book::itch::perf_test {
 
 class PerfTest {
    template<typename BOOKS, typename ADD, typename REPLACE>
-   static void RunPerfTest(const std::string &fpath, const size_t page_size = 0) {
+   static void RunPerfTest(const std::string &name, const std::string &fpath, const size_t page_size = 0) {
       const auto start = nostromo::TimeUtils::Now();
 
       const auto [
@@ -88,36 +89,31 @@ class PerfTest {
       }
 
       const auto elap = nostromo::TimeUtils::Now() - start;
-      const auto ops = Utils::Ops(elap.count(), order_cnt);
       const auto npo = static_cast<double>(elap.count()) / static_cast<double>(order_cnt);
 
-      fmt::print("{}", fmt::format(
-            std::locale("en_US.UTF-8"),
-            "order count: {:L}\n"
-            "elapsed: {:L} ns\n"
-            "orders/sec: {:L}\n"
-            "nanos/order: {:.2f}\n\n",
-            order_cnt, elap.count(), ops, npo
-      ));
+      fmt::print("test: {} nanos/order: {:.4f}\n", name, npo);
    }
 
 public:
    static void Run(const std::string &fpath) {
       fmt::print("processing: {}\n", fpath);
+      const auto sorted = fpath + "-sorted";
+      const auto sorted_idx = fpath + "-sorted-idx";
 
       const auto page_sizes = {nostromo::HugePage::SIZE_1GB};
       for (const auto page_size: page_sizes) {
 //         RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-//         RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-//         RunPerfTest<v05::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-//         RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-//         RunPerfTest<v07::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath, page_size);
-         RunPerfTest<v08::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
-         RunPerfTest<v09::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
-         RunPerfTest<v10::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
-         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
-         RunPerfTest<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>(fpath + "-sorted-idx", page_size);
-         RunPerfTest<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>(fpath + "-sorted-idx", page_size);
+         RunPerfTest<v03::OrderBooks, ItchOrderAdd, ItchOrderReplace>("03", sorted, page_size);
+         RunPerfTest<v05::OrderBooks, ItchOrderAdd, ItchOrderReplace>("05", sorted, page_size);
+         RunPerfTest<v06::OrderBooks, ItchOrderAdd, ItchOrderReplace>("06", sorted, page_size);
+         RunPerfTest<v07::OrderBooks, ItchOrderAdd, ItchOrderReplace>("07", sorted, page_size);
+         RunPerfTest<v08::OrderBooks, ItchOrderAdd, ItchOrderReplace>("08", sorted, page_size);
+         RunPerfTest<v09::OrderBooks, ItchOrderAdd, ItchOrderReplace>("09", sorted, page_size);
+         RunPerfTest<v10::OrderBooks, ItchOrderAdd, ItchOrderReplace>("10", sorted, page_size);
+         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>("11", sorted, page_size);
+         RunPerfTest<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", sorted_idx, page_size);
+         RunPerfTest<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", sorted_idx, page_size);
+         RunPerfTest<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", sorted_idx, page_size);
       }
    }
 };
@@ -125,7 +121,9 @@ public:
 } // namespace order_book::itch::perf_test
 
 int main() {
-   nostromo::ThreadUtils::SetAffinity(11);
+   const auto core_id = static_cast<int>(std::thread::hardware_concurrency()) - 1;
+   fmt::print("using core id: {}\n", core_id);
+   nostromo::ThreadUtils::SetAffinity(core_id);
    namespace itch = order_book::itch;
 
    for (const auto &fname: itch::DATA_FILE_NAMES) {
