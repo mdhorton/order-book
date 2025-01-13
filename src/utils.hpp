@@ -1,6 +1,7 @@
 #ifndef ORDER_BOOK_UTILS_HPP
 #define ORDER_BOOK_UTILS_HPP
 
+#include <cstdint>
 #include <string>
 
 namespace order_book {

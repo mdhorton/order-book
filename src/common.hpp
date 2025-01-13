@@ -12,8 +12,8 @@ namespace order_book::itch {
 const std::string DATA_DIR_BASE{"/remote/data/nasdaq-itch/"};
 
 const std::vector<std::string> DATA_FILE_NAMES{
-      "01302019.NASDAQ_ITCH50",
-      "01302020.NASDAQ_ITCH50",
+      // "01302019.NASDAQ_ITCH50",
+      // "01302020.NASDAQ_ITCH50",
       "12302019.NASDAQ_ITCH50"
 };
 
