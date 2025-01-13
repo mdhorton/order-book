@@ -9,6 +9,7 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <set>
 
 namespace order_book::itch {
 
@@ -41,7 +42,7 @@ private:
    static void WritePrices(std::ofstream &out, const auto &prices) {
       const auto price_cnt = prices.size();
       out.write(reinterpret_cast<const char *>(&price_cnt), sizeof(price_cnt));
-      for (const auto price: prices) {
+      for (const auto price: std::set<uint32_t>{prices.begin(), prices.end()}) {
          out.write(reinterpret_cast<const char *>(&price), sizeof(price));
       }
    }
@@ -60,9 +61,9 @@ public:
 
       for (auto idx = 0u; idx < stock_cnt; ++idx) {
          const auto stock_code = ReadInt<uint16_t>(in);
-         const auto bids = ReadPrices(in);
          const auto asks = ReadPrices(in);
-         stock_prices[stock_code] = std::make_pair(bids, asks);
+         const auto bids = ReadPrices(in);
+         stock_prices[stock_code] = std::make_pair(asks, bids);
       }
 
       return std::make_tuple(max_order_id, max_stock_code, stock_prices);
@@ -84,8 +85,9 @@ public:
 
       for (const auto &[stock_code, pair]: stock_prices) {
          out.write(reinterpret_cast<const char *>(&stock_code), sizeof(stock_code));
-         WritePrices(out, pair.first);
-         WritePrices(out, pair.second);
+         const auto &[ask_prices, bid_prices] = pair;
+         WritePrices(out, ask_prices);
+         WritePrices(out, bid_prices);
       }
 
       if (out.fail()) {

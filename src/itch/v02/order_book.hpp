@@ -1,32 +1,19 @@
 #ifndef ORDER_BOOK_ITCH_V02_ORDER_BOOK_HPP
 #define ORDER_BOOK_ITCH_V02_ORDER_BOOK_HPP
 
-#include <cstdint>
-#include <cassert>
-#include <span>
+#include "itch/itch.hpp"
+
+#include "nostromo/mmap.hpp"
 
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
 
-#include "nostromo/mmap.hpp"
-
-#include "common.hpp"
-#include "itch/itch.hpp"
+#include <cstdint>
+#include <cassert>
+#include <vector>
+#include <span>
 
 namespace order_book::itch::v02 {
-
-template<typename K, typename V>
-using MAP = boost::unordered_flat_map<K, V>;
-
-// 32 bytes
-struct Order {
-   uint32_t order_id;
-   uint32_t quantity;
-   uint32_t next_idx;
-   uint32_t prev_idx;
-   uint32_t price_idx;
-   uint16_t bid;
-};
 
 // 16 bytes
 struct PriceLevel {
@@ -38,13 +25,25 @@ struct PriceLevel {
    uint16_t idx;
 };
 
+// 32 bytes
+struct Order {
+   uint32_t order_id;
+   uint32_t quantity;
+   uint32_t next_idx;
+   uint32_t prev_idx;
+   uint32_t price_idx;
+   uint16_t bid;
+};
+
+using PRICE_MAP = boost::unordered_flat_map<uint32_t, PriceLevel *>;
+
 class OrderBook {
    std::span<Order> orders_;
 
    std::vector<PriceLevel> bid_levels_{};
    std::vector<PriceLevel> ask_levels_{};
-   MAP<uint32_t, PriceLevel *> bid_price_map_{};
-   MAP<uint32_t, PriceLevel *> ask_price_map_{};
+   PRICE_MAP bid_price_map_{};
+   PRICE_MAP ask_price_map_{};
    uint32_t bid_count_{0};
    uint32_t ask_count_{0};
    uint32_t best_bid_{0};
@@ -157,16 +156,12 @@ public:
    }
 
    [[nodiscard]] ALWAYS_INLINE
-   PriceLevel *PriceLevelFromPrice(
-         const uint8_t bid,
-         const uint32_t price) {
+   PriceLevel *PriceLevelFromPrice(const uint8_t bid, const uint32_t price) {
       return bid ? bid_price_map_[price] : ask_price_map_[price];
    }
 
    [[nodiscard]] ALWAYS_INLINE
-   PriceLevel *PriceLevelFromIndex(
-         const uint8_t bid,
-         const uint32_t idx) {
+   PriceLevel *PriceLevelFromIndex(const uint8_t bid, const uint32_t idx) {
       return bid ? &bid_levels_[idx] : &ask_levels_[idx];
    }
 
@@ -181,7 +176,6 @@ private:
       auto price_level = PriceLevelFromPrice(itch_order.bid, itch_order.price);
       auto order = OrderFromId(itch_order.order_id);
 
-//      order->timestamp = itch_order.timestamp;
       order->order_id = itch_order.order_id;
       order->quantity = itch_order.quantity;
       order->price_idx = price_level->idx;
@@ -333,7 +327,7 @@ public:
          const auto max_order_id,
          const auto max_stock_code,
          const auto &stock_prices,
-         size_t page_size = 0)
+         const size_t page_size = 0u)
          : orders_mmap_{max_order_id + 1u, page_size},
            order_books_mmap_{max_stock_code + 1u, page_size},
            orders_{orders_mmap_.Span()},

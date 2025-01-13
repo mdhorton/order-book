@@ -11,6 +11,7 @@
 #include <fmt/format.h>
 
 #include <fstream>
+#include <set>
 
 namespace order_book::itch {
 
@@ -84,7 +85,7 @@ private:
                if (order->stock_code > max_stock_code_) max_stock_code_ = order->stock_code;
 
                auto &pair = stock_prices_[order->stock_code];
-               auto &prices = order->bid ? pair.first : pair.second;
+               auto &prices = order->bid ? pair.second : pair.first;
 
                prices.insert(order->price);
                bid_map_[order->order_id] = order->bid;
@@ -127,7 +128,7 @@ private:
 
                const auto bid = bid_map_[order->order_id];
                auto &pair = stock_prices_[order->stock_code];
-               auto &prices = bid ? pair.first : pair.second;
+               auto &prices = bid ? pair.second : pair.first;
 
                prices.insert(order->price);
                bid_map_[order->new_order_id] = bid;
@@ -181,7 +182,8 @@ private:
       const auto set2map = [](const auto &prices) {
          MAP<uint32_t, uint16_t> map{};
          uint16_t idx = 0u;
-         for (const auto price: prices) {
+         std::set<uint32_t> set{prices.begin(), prices.end()};
+         for (const auto price: set) {
             map[price] = idx;
             ++idx;
          }
@@ -191,9 +193,9 @@ private:
       std::ofstream out(fpath_ + fext, std::ios_base::out | std::ios_base::binary);
 
       for (const auto &[stock_code, orders]: stock_orders_) {
-         const auto &[bid_set, ask_set] = stock_prices_[stock_code];
-         auto bids = set2map(bid_set);
+         const auto &[ask_set, bid_set] = stock_prices_[stock_code];
          auto asks = set2map(ask_set);
+         auto bids = set2map(bid_set);
 
          for (const auto &[msg_type, order]: orders) {
             out.write((const char *) &msg_type, sizeof(char));
