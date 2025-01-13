@@ -13,11 +13,11 @@
 // use std::span instead of std::vector for price levels.
 namespace order_book::itch::v13 {
 
-struct alignas(4) PriceLevel {
+struct PriceLevel {
    uint32_t quantity;
 };
 
-struct alignas(16) Order {
+struct Order {
    PriceLevel *level;
    uint32_t quantity;
    uint8_t bid;
@@ -53,7 +53,7 @@ public:
    }
 
    ALWAYS_INLINE
-   void OrderAdd(const ItchOrderAddIdx &itch_order) {
+   void OrderAdd(const ItchOrderAddIdx &itch_order) const {
       OrderAddImpl(itch_order);
    }
 
@@ -98,7 +98,7 @@ public:
    }
 
    [[nodiscard]] ALWAYS_INLINE
-   PriceLevel *PriceLevelFromPrice(const ItchOrderAddIdx &order) {
+   PriceLevel *PriceLevelFromPrice(const ItchOrderAddIdx &order) const {
       return &price_levels_[order.bid][order.price_idx];
    }
 
@@ -114,7 +114,7 @@ public:
 
 private:
    ALWAYS_INLINE
-   void OrderAddImpl(const ItchOrderAddIdx &itch_order) {
+   void OrderAddImpl(const ItchOrderAddIdx &itch_order) const {
       const auto price_level = PriceLevelFromPrice(itch_order);
       const auto order = OrderFromId(itch_order.order_id);
 

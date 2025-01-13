@@ -107,16 +107,16 @@ public:
 
       const auto page_sizes = {nostromo::HugePage::SIZE_1GB};
       for (const auto page_size: page_sizes) {
-         // RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-         // RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-         // RunPerfTest<v05::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-         // RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
-         // RunPerfTest<v07::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath, page_size);
-         // RunPerfTest<v08::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
-         // RunPerfTest<v09::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
-         // RunPerfTest<v10::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
-         // RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
-         RunPerfTest<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>(fpath + "-sorted-idx", page_size);
+//         RunPerfTest<v02::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+//         RunPerfTest<v03::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+//         RunPerfTest<v05::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+//         RunPerfTest<v06::OrderBooks>(fpath, nostromo::HugePageUtils::SIZE_1GB);
+//         RunPerfTest<v07::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath, page_size);
+//         RunPerfTest<v08::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+//         RunPerfTest<v09::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+//         RunPerfTest<v10::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+//         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>(fpath + "-sorted", page_size);
+//         RunPerfTest<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>(fpath + "-sorted-idx", page_size);
          RunPerfTest<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>(fpath + "-sorted-idx", page_size);
       }
    }
