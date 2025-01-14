@@ -1,5 +1,5 @@
-#ifndef ORDER_BOOK_ITCH_V17_ORDER_BOOK_HPP
-#define ORDER_BOOK_ITCH_V17_ORDER_BOOK_HPP
+#ifndef ORDER_BOOK_ITCH_V18_ORDER_BOOK_HPP
+#define ORDER_BOOK_ITCH_V18_ORDER_BOOK_HPP
 
 #include "itch/common.hpp"
 #include "itch/using.hpp"
@@ -12,9 +12,8 @@
 #include <vector>
 #include <span>
 
-// reversed bid_prices so that the logic for finding
-// best bid is the same as finding best ask.
-namespace order_book::itch::v17 {
+// from v16 -> added another page size parameter.
+namespace order_book::itch::v18 {
 
 struct PriceLevel {
    uint32_t quantity;
@@ -50,8 +49,8 @@ public:
          : orders_{orders},
            levels_{ask_levels, bid_levels},
            side_data_{
-                 {ask_levels.empty() ? nullptr : &ask_levels.back(), nullptr},
-                 {bid_levels.empty() ? nullptr : &bid_levels.back(), nullptr}} {
+                 {ask_levels.empty() ? nullptr : &ask_levels.back(),  nullptr},
+                 {bid_levels.empty() ? nullptr : &bid_levels.front(), nullptr}} {
       InitializePrices(asks, levels_[0]);
       InitializePrices(bids, levels_[1]);
    }
@@ -165,10 +164,20 @@ private:
 
       // is this level empty and was it the previous best price level?
       if (price_level->quantity == 0u && side_data->best_level == price_level) {
-         for (auto pl = price_level; pl != side_data->last_level; ++pl) {
-            if (pl->quantity > 0u) {
-               side_data->best_level = pl;
-               return;
+         if (bid) {
+            for (auto pl = price_level; pl != side_data->last_level; --pl) {
+               if (pl->quantity > 0u) {
+                  side_data->best_level = pl;
+                  return;
+               }
+            }
+         }
+         else {
+            for (auto pl = price_level; pl != side_data->last_level; ++pl) {
+               if (pl->quantity > 0u) {
+                  side_data->best_level = pl;
+                  return;
+               }
             }
          }
 
@@ -253,6 +262,6 @@ private:
    }
 };
 
-} // order_book::itch::v17
+} // order_book::itch::v18
 
-#endif //ORDER_BOOK_ITCH_V17_ORDER_BOOK_HPP
+#endif //ORDER_BOOK_ITCH_V18_ORDER_BOOK_HPP

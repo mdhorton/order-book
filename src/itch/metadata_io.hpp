@@ -1,6 +1,8 @@
 #ifndef ORDER_BOOK_ITCH_METADATA_IO_HPP
 #define ORDER_BOOK_ITCH_METADATA_IO_HPP
 
+#include "itch/using.hpp"
+
 #include "nostromo/error.hpp"
 
 #include <cstdint>
@@ -10,9 +12,6 @@
 #include <set>
 
 namespace order_book::itch {
-
-// stock_code -> pair<asks, bids>
-using STOCK_PRICE_MAP = std::map<uint16_t, std::pair<std::vector<uint32_t>, std::vector<uint32_t>>>;
 
 class MetadataIO {
 private:

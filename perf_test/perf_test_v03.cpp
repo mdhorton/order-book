@@ -15,6 +15,7 @@
 //#include "itch/v15/order_book.hpp"
 #include "itch/v16/order_book.hpp"
 #include "itch/v17/order_book.hpp"
+#include "itch/v18/order_book.hpp"
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
@@ -41,16 +42,17 @@ public:
          const std::string &test_id,
          const std::string &meta_suffix,
          const std::string &bin_suffix,
-         const size_t page_size = 0) {
+         const size_t orders_page_size = nostromo::HugePage::SIZE_1GB,
+         const size_t other_page_size = nostromo::HugePage::SIZE_2MB) {
       const auto start = nostromo::TimeUtils::Now();
 
       const auto [
             max_order_id,
             max_stock_code,
-            stock_prices
+            stock_price_map
       ] = MetadataIO::Read(fprefix_ + ".meta" + meta_suffix);
 
-      BOOKS books{max_order_id, max_stock_code, stock_prices, page_size};
+      BOOKS books{max_order_id, max_stock_code, stock_price_map, orders_page_size, other_page_size};
 
       const nostromo::Mmap<char> mmap{fprefix_ + ".bin" + bin_suffix};
       const auto data = mmap.Span();
@@ -114,8 +116,13 @@ public:
       const auto sorted_idx = sorted + "-idx";
       const auto sorted_idx_r = sorted_idx + reverse;
 
-      const auto page_sizes = {nostromo::HugePage::SIZE_1GB};
-      for (const auto page_size: page_sizes) {
+      const auto orders_page_sizes = {nostromo::HugePage::SIZE_2MB, nostromo::HugePage::SIZE_1GB};
+      const auto other_page_sizes = {nostromo::HugePage::SIZE_2MB, nostromo::HugePage::SIZE_1GB};
+
+      for (const auto orders_page_size: orders_page_sizes) {
+         for (const auto other_page_size: other_page_sizes) {
+         }
+      }
 //         RunPerfTest<v03::OrderBooks, ItchOrderAdd, ItchOrderReplace>("03", sorted, page_size);
 //         RunPerfTest<v05::OrderBooks, ItchOrderAdd, ItchOrderReplace>("05", sorted, page_size);
 //         RunPerfTest<v06::OrderBooks, ItchOrderAdd, ItchOrderReplace>("06", sorted, page_size);
@@ -132,9 +139,15 @@ public:
 //         RunPerfTest<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", sorted_idx, page_size);
 //         RunPerfTest<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", sorted_idx, page_size);
 
-         Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx, page_size);
-         Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse, sorted_idx_r, page_size);
-      }
+      Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
+      Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
+      Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
+      Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
+
+      Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse, sorted_idx_r);
+      Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse, sorted_idx_r);
+      Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse, sorted_idx_r);
+      Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse, sorted_idx_r);
    }
 };
 

@@ -21,6 +21,7 @@ set(ORDER_BOOK_SOURCE_FILES
         itch/v15/order_book.hpp
         itch/v16/order_book.hpp
         itch/v17/order_book.hpp
+        itch/v18/order_book.hpp
 )
 
 add_executable(order_book ${ORDER_BOOK_SOURCE_FILES})

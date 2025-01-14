@@ -2,6 +2,7 @@
 #define ORDER_BOOK_ITCH_V16_ORDER_BOOK_HPP
 
 #include "itch/common.hpp"
+#include "itch/using.hpp"
 #include "itch/itch.hpp"
 
 #include "nostromo/mmap.hpp"
@@ -114,8 +115,8 @@ public:
       return &levels_[order.bid][order.price_idx];
    }
 
-   [[nodiscard]] ALWAYS_INLINE static
-   PriceLevel *PriceLevelFromIndex(const Order &order) {
+   [[nodiscard]] ALWAYS_INLINE
+   static PriceLevel *PriceLevelFromIndex(const Order &order) {
       return order.level;
    }
 
@@ -138,8 +139,8 @@ private:
       if (price_level->quantity == 0u) {
          const auto side_data = &side_data_[order->bid];
          if (side_data->best_level == nullptr ||
-             (order->bid && itch_order.price > side_data->best_level->price) ||
-             (!order->bid && itch_order.price < side_data->best_level->price)) {
+             (!order->bid && itch_order.price < side_data->best_level->price) ||
+             (order->bid && itch_order.price > side_data->best_level->price)) {
             side_data->best_level = price_level;
          }
       }
@@ -165,7 +166,7 @@ private:
       if (price_level->quantity == 0u && side_data->best_level == price_level) {
          if (bid) {
             for (auto pl = price_level; pl != side_data->last_level; --pl) {
-               if (pl->quantity > 0) {
+               if (pl->quantity > 0u) {
                   side_data->best_level = pl;
                   return;
                }
@@ -173,7 +174,7 @@ private:
          }
          else {
             for (auto pl = price_level; pl != side_data->last_level; ++pl) {
-               if (pl->quantity > 0) {
+               if (pl->quantity > 0u) {
                   side_data->best_level = pl;
                   return;
                }
@@ -198,16 +199,17 @@ public:
    OrderBooks(
          const auto max_order_id,
          const auto max_stock_code,
-         const auto &stock_prices,
-         const size_t page_size = 0u)
-         : orders_mmap_{max_order_id + 1u, page_size},
-           order_books_mmap_{max_stock_code + 1u, page_size},
-           price_levels_mmap_{CountPriceLevels(stock_prices), page_size},
+         const STOCK_PRICE_MAP &stock_price_map,
+         const size_t orders_page_size,
+         const size_t other_page_size)
+         : orders_mmap_{max_order_id + 1u, orders_page_size},
+           order_books_mmap_{max_stock_code + 1u, other_page_size},
+           price_levels_mmap_{CountPriceLevels(stock_price_map), other_page_size},
            orders_{orders_mmap_.Span()},
            order_books_{order_books_mmap_.Span()},
            price_levels_{price_levels_mmap_.Span()} {
       auto offset = 0u;
-      for (const auto &[stock_code, pair]: stock_prices) {
+      for (const auto &[stock_code, pair]: stock_price_map) {
          const auto &[asks, bids] = pair;
          const auto ask_levels = price_levels_.subspan(offset, asks.size());
          offset += asks.size();
@@ -249,9 +251,10 @@ public:
    }
 
 private:
-   auto CountPriceLevels(const auto &stock_prices) const {
-      auto cnt = 0u;
-      for (const auto &[stock_code, pair]: stock_prices) {
+   [[nodiscard]]
+   static size_t CountPriceLevels(const STOCK_PRICE_MAP &stock_price_map) {
+      size_t cnt = 0u;
+      for (const auto &[stock_code, pair]: stock_price_map) {
          const auto &[asks, bids] = pair;
          cnt += asks.size() + bids.size();
       }
