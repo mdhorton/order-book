@@ -12,7 +12,7 @@
 #include <vector>
 #include <span>
 
-// reversed bid_prices so that the logic for finding
+// reversed bid prices so that the logic for finding
 // best bid is the same as finding best ask.
 namespace order_book::itch::v17 {
 
