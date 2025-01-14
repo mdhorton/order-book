@@ -2,7 +2,8 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 
 set(ORDER_BOOK_SOURCE_FILES
         main.cpp
-        common.hpp
+        itch/common.hpp
+        itch/using.hpp
         itch/itch.hpp
         itch/itch_raw.hpp
         itch/v02/order_book.hpp
@@ -18,6 +19,8 @@ set(ORDER_BOOK_SOURCE_FILES
         itch/v13/order_book.hpp
         itch/v14/order_book.hpp
         itch/v15/order_book.hpp
+        itch/v16/order_book.hpp
+        itch/v17/order_book.hpp
 )
 
 add_executable(order_book ${ORDER_BOOK_SOURCE_FILES})

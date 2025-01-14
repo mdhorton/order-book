@@ -1,18 +1,20 @@
 #include "itch/itch.hpp"
 #include "itch/metadata_io.hpp"
 
-#include "itch/v03/order_book.hpp"
-#include "itch/v05/order_book.hpp"
-#include "itch/v06/order_book.hpp"
-#include "itch/v07/order_book.hpp"
-#include "itch/v08/order_book.hpp"
-#include "itch/v09/order_book.hpp"
-#include "itch/v10/order_book.hpp"
-#include "itch/v11/order_book.hpp"
-#include "itch/v12/order_book.hpp"
-#include "itch/v13/order_book.hpp"
-#include "itch/v14/order_book.hpp"
-#include "itch/v15/order_book.hpp"
+//#include "itch/v03/order_book.hpp"
+//#include "itch/v05/order_book.hpp"
+//#include "itch/v06/order_book.hpp"
+//#include "itch/v07/order_book.hpp"
+//#include "itch/v08/order_book.hpp"
+//#include "itch/v09/order_book.hpp"
+//#include "itch/v10/order_book.hpp"
+//#include "itch/v11/order_book.hpp"
+//#include "itch/v12/order_book.hpp"
+//#include "itch/v13/order_book.hpp"
+//#include "itch/v14/order_book.hpp"
+//#include "itch/v15/order_book.hpp"
+#include "itch/v16/order_book.hpp"
+#include "itch/v17/order_book.hpp"
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
@@ -28,19 +30,29 @@
 namespace order_book::itch::perf_test {
 
 class PerfTest {
+   const std::string &fprefix_;
+
+public:
+   explicit PerfTest(const std::string &fprefix)
+         : fprefix_{fprefix} {}
+
    template<typename BOOKS, typename ADD, typename REPLACE>
-   static void RunPerfTest(const std::string &name, const std::string &fpath, const size_t page_size = 0) {
+   void Execute(
+         const std::string &test_id,
+         const std::string &meta_suffix,
+         const std::string &bin_suffix,
+         const size_t page_size = 0) {
       const auto start = nostromo::TimeUtils::Now();
 
       const auto [
             max_order_id,
             max_stock_code,
             stock_prices
-      ] = MetadataIO::Read(fpath);
+      ] = MetadataIO::Read(fprefix_ + ".meta" + meta_suffix);
 
       BOOKS books{max_order_id, max_stock_code, stock_prices, page_size};
 
-      const nostromo::Mmap<char> mmap{fpath};
+      const nostromo::Mmap<char> mmap{fprefix_ + ".bin" + bin_suffix};
       const auto data = mmap.Span();
 
       uint64_t offset = 0;
@@ -92,14 +104,15 @@ class PerfTest {
       const auto elap = nostromo::TimeUtils::Now() - start;
       const auto npo = static_cast<double>(elap.count()) / static_cast<double>(order_cnt);
 
-      fmt::print("test: {} nanos/order: {:.4f}\n", name, npo);
+      fmt::print("test id: {}  ns/order: {:.4f}\n", test_id, npo);
    }
 
 public:
-   static void Run(const std::string &fpath) {
-      fmt::print("processing: {}\n", fpath);
-      const auto sorted = fpath + "-sorted";
-      const auto sorted_idx = fpath + "-sorted-idx";
+   void Run() {
+      const auto sorted = std::string{"-sorted"};
+      const auto reverse = std::string{"-reverse-bid"};
+      const auto sorted_idx = sorted + "-idx";
+      const auto sorted_idx_r = sorted_idx + reverse;
 
       const auto page_sizes = {nostromo::HugePage::SIZE_1GB};
       for (const auto page_size: page_sizes) {
@@ -114,8 +127,13 @@ public:
 //         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>("11", fpath, page_size);
 //         RunPerfTest<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", sorted_idx, page_size);
 //         RunPerfTest<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", sorted_idx, page_size);
-         RunPerfTest<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", sorted_idx, page_size);
-         RunPerfTest<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", sorted_idx, page_size);
+//         test.R<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", sorted_idx, page_size);
+//         RunPerfTest<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", sorted_idx, page_size);
+//         RunPerfTest<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", sorted_idx, page_size);
+//         RunPerfTest<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", sorted_idx, page_size);
+
+         Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx, page_size);
+         Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse, sorted_idx_r, page_size);
       }
    }
 };
@@ -126,11 +144,13 @@ int main() {
    const auto core_id = static_cast<int>(std::thread::hardware_concurrency()) - 1;
    fmt::print("using core id: {}\n", core_id);
    nostromo::ThreadUtils::SetAffinity(core_id);
+
    namespace itch = order_book::itch;
 
    for (const auto &fname: itch::DATA_FILE_NAMES) {
-      const auto fpath = itch::DATA_DIR_BASE + fname + ".bin";
-      order_book::itch::perf_test::PerfTest::Run(fpath);
+      const auto fprefix = itch::DATA_DIR_BASE + fname;
+      fmt::print("processing: {}\n", fprefix);
+      itch::perf_test::PerfTest{fprefix}.Run();
    }
 
    return 0;

@@ -5,7 +5,6 @@
 #include <vector>
 
 #define ALWAYS_INLINE inline __attribute__ ((__always_inline__))
-//#define ALWAYS_INLINE inline
 #define PACKED __attribute__((packed))
 
 namespace order_book::itch {

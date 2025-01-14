@@ -11,6 +11,7 @@
 #include <vector>
 #include <span>
 
+// add best price level tracking.
 namespace order_book::itch::v15 {
 
 struct PriceLevel {
@@ -27,10 +28,9 @@ struct Order {
 class OrderBook {
    const std::span<Order> orders_;
    const std::span<PriceLevel> levels_[2];
-   const PriceLevel *end_levels_[2];
+   const PriceLevel *last_levels_[2];
 
    PriceLevel *best_levels_[2] = {nullptr, nullptr};
-//   uint64_t order_cnts_[2] = {0u, 0u};
    ItchOrderAddIdx tmp_order_add_{};
    ItchOrderDelete tmp_order_delete_{};
 
@@ -43,7 +43,7 @@ public:
          const std::vector<uint32_t> &bid_prices)
          : orders_{orders},
            levels_{ask_levels, bid_levels},
-           end_levels_{
+           last_levels_{
                  ask_levels.empty() ? nullptr : &ask_levels.back(),
                  bid_levels.empty() ? nullptr : &bid_levels.front()} {
       InitializePrices(ask_prices, levels_[0]);
@@ -53,7 +53,7 @@ public:
    static void InitializePrices(
          const auto &prices,
          auto &price_levels) {
-      for (uint32_t idx = 0u; idx < prices.size(); ++idx) {
+      for (auto idx = 0u; idx < prices.size(); ++idx) {
          auto &price_level = price_levels[idx];
          price_level.price = prices[idx];
       }
@@ -72,7 +72,6 @@ public:
       assert(price_level->quantity >= itch_order.quantity);
       order->quantity -= itch_order.quantity;
       price_level->quantity -= itch_order.quantity;
-//      if (order->quantity == 0u) --order_cnts_[order->bid];
       CheckBestPriceLevel(price_level, order->bid);
    }
 
@@ -131,9 +130,7 @@ private:
       order->quantity = itch_order.quantity;
       order->bid = itch_order.bid;
 
-//      if (order_cnts_[order->bid] == 0u) {
-//         best_levels_[order->bid] = price_level;
-//      }
+      // check for a new best level if this is a "new" level.
       if (price_level->quantity == 0u) {
          const auto pl = best_levels_[order->bid];
          if (pl == nullptr ||
@@ -144,7 +141,6 @@ private:
       }
 
       price_level->quantity += order->quantity;
-//      ++order_cnts_[order->bid];
    }
 
    ALWAYS_INLINE
@@ -154,52 +150,33 @@ private:
       assert(price_level->quantity >= order->quantity);
       order->quantity = 0u;
       price_level->quantity -= order->quantity;
-//      --order_cnts_[order->bid];
       CheckBestPriceLevel(price_level, order->bid);
    }
 
    ALWAYS_INLINE
    void CheckBestPriceLevel(PriceLevel *price_level, const uint8_t bid) {
-//      if (order_cnts_[bid] == 0u) {
-//         best_levels_[bid] = nullptr;
-//         return;
-//      }
-
       // is this level now empty and was it the previous best price level?
       if (price_level->quantity == 0u && best_levels_[bid] == price_level) {
-         const auto end_level = end_levels_[bid];
-
-         // if its the last level then this side of the order book is empty.
-         if (price_level == end_level) {
-            best_levels_[bid] = nullptr;
-            return;
-         }
+         const auto last_level = last_levels_[bid];
 
          if (bid) {
-            auto pl = price_level - 1;
-            while (true) {
+            for (auto pl = price_level; pl != last_level; --pl) {
                if (pl->quantity > 0) {
                   best_levels_[bid] = pl;
                   return;
                }
-               if (pl == end_level) break;
-               --pl;
             }
          }
          else {
-            auto pl = price_level + 1;
-            while (true) {
+            for (auto pl = price_level; pl != last_level; ++pl) {
                if (pl->quantity > 0) {
                   best_levels_[bid] = pl;
                   return;
                }
-               if (pl == end_level) break;
-               ++pl;
             }
          }
 
          best_levels_[bid] = nullptr;
-//         printf("bad\n");
       }
    }
 };
