@@ -98,8 +98,8 @@ public:
                offset += sizeof(REPLACE);
                break;
             }
-            default:
-               throw std::runtime_error("unsupported msg_type at offset: " + std::to_string(offset - 1));
+//            default:
+//               throw std::runtime_error("unsupported msg_type at offset: " + std::to_string(offset - 1));
          }
       }
 
@@ -116,13 +116,13 @@ public:
       const auto sorted_idx = sorted + "-idx";
       const auto sorted_idx_r = sorted_idx + reverse;
 
-      const auto orders_page_sizes = {nostromo::HugePage::SIZE_2MB, nostromo::HugePage::SIZE_1GB};
-      const auto other_page_sizes = {nostromo::HugePage::SIZE_2MB, nostromo::HugePage::SIZE_1GB};
-
-      for (const auto orders_page_size: orders_page_sizes) {
-         for (const auto other_page_size: other_page_sizes) {
-         }
-      }
+//      const auto orders_page_sizes = {nostromo::HugePage::SIZE_2MB, nostromo::HugePage::SIZE_1GB};
+//      const auto other_page_sizes = {nostromo::HugePage::SIZE_2MB, nostromo::HugePage::SIZE_1GB};
+//
+//      for (const auto orders_page_size: orders_page_sizes) {
+//         for (const auto other_page_size: other_page_sizes) {
+//         }
+//      }
 //         RunPerfTest<v03::OrderBooks, ItchOrderAdd, ItchOrderReplace>("03", sorted, page_size);
 //         RunPerfTest<v05::OrderBooks, ItchOrderAdd, ItchOrderReplace>("05", sorted, page_size);
 //         RunPerfTest<v06::OrderBooks, ItchOrderAdd, ItchOrderReplace>("06", sorted, page_size);
@@ -141,20 +141,21 @@ public:
 
       Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
       Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
-      Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
 
       Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse, sorted_idx_r);
       Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse, sorted_idx_r);
-      Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse, sorted_idx_r);
+
+      Execute<v18::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("18", reverse, sorted_idx_r);
+      Execute<v18::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("18", reverse, sorted_idx_r);
    }
 };
 
 } // namespace order_book::itch::perf_test
 
 int main() {
-   const auto core_id = static_cast<int>(std::thread::hardware_concurrency()) - 1;
-   fmt::print("using core id: {}\n", core_id);
-   nostromo::ThreadUtils::SetAffinity(core_id);
+   const auto cpuid = static_cast<int>(std::thread::hardware_concurrency()) - 1;
+   fmt::print("using cpuid: {}\n", cpuid);
+   nostromo::ThreadUtils::SetAffinity(cpuid);
 
    namespace itch = order_book::itch;
 

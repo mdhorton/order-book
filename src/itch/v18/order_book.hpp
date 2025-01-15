@@ -12,7 +12,6 @@
 #include <vector>
 #include <span>
 
-// from v16 -> added another page size parameter.
 namespace order_book::itch::v18 {
 
 struct PriceLevel {
@@ -49,8 +48,8 @@ public:
          : orders_{orders},
            levels_{ask_levels, bid_levels},
            side_data_{
-                 {ask_levels.empty() ? nullptr : &ask_levels.back(),  nullptr},
-                 {bid_levels.empty() ? nullptr : &bid_levels.front(), nullptr}} {
+                 {ask_levels.empty() ? nullptr : &ask_levels.back(), nullptr},
+                 {bid_levels.empty() ? nullptr : &bid_levels.back(), nullptr}} {
       InitializePrices(asks, levels_[0]);
       InitializePrices(bids, levels_[1]);
    }
@@ -139,8 +138,8 @@ private:
       if (price_level->quantity == 0u) {
          const auto side_data = &side_data_[order->bid];
          if (side_data->best_level == nullptr ||
-             (!order->bid && itch_order.price < side_data->best_level->price) ||
-             (order->bid && itch_order.price > side_data->best_level->price)) {
+             (order->bid == 0u && itch_order.price < side_data->best_level->price) ||
+             (order->bid != 0u && itch_order.price > side_data->best_level->price)) {
             side_data->best_level = price_level;
          }
       }
@@ -164,20 +163,10 @@ private:
 
       // is this level empty and was it the previous best price level?
       if (price_level->quantity == 0u && side_data->best_level == price_level) {
-         if (bid) {
-            for (auto pl = price_level; pl != side_data->last_level; --pl) {
-               if (pl->quantity > 0u) {
-                  side_data->best_level = pl;
-                  return;
-               }
-            }
-         }
-         else {
-            for (auto pl = price_level; pl != side_data->last_level; ++pl) {
-               if (pl->quantity > 0u) {
-                  side_data->best_level = pl;
-                  return;
-               }
+         for (auto pl = price_level; pl != side_data->last_level; ++pl) {
+            if (pl->quantity > 0u) {
+               side_data->best_level = pl;
+               return;
             }
          }
 

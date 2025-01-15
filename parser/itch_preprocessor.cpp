@@ -1,4 +1,5 @@
 #include "utils.hpp"
+#include "itch/common.hpp"
 #include "itch/using.hpp"
 #include "itch/itch.hpp"
 #include "itch/metadata_io.hpp"
@@ -35,9 +36,11 @@ public:
       const auto start = nostromo::TimeUtils::Now();
 
       STOCK_PRICE_UMAP stock_price_umap = ReadOrders();
-
       STOCK_PRICE_MAP stock_price_map{};
       STOCK_PRICE_MAP stock_price_map_reverse_bid{};
+      STOCK_PRICE_MAP stock_price_map_busiest{};
+      uint16_t busiest_stock_code = 0;
+      size_t busiest_stock_cnt = 0;
 
       for (const auto &[stock_code, pair]: stock_price_umap) {
          const auto &[ask_uset, bid_uset] = pair;
@@ -50,7 +53,15 @@ public:
 
          const auto bids_reversed = std::vector<uint32_t>{bids.rbegin(), bids.rend()};
          stock_price_map_reverse_bid[stock_code] = std::make_pair(asks, bids_reversed);
+
+         const auto cnt = asks.size() + bids.size();
+         if (cnt > busiest_stock_cnt) {
+            busiest_stock_cnt = cnt;
+            busiest_stock_code = stock_code;
+         }
       }
+
+      stock_price_map_busiest[busiest_stock_code] = stock_price_map[busiest_stock_code];
 
       const auto fpath_bin = fprefix_ + ".bin-sorted";
       const auto fpath_meta = fprefix_ + ".meta";

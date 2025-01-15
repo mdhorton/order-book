@@ -139,8 +139,8 @@ private:
       if (price_level->quantity == 0u) {
          const auto side_data = &side_data_[order->bid];
          if (side_data->best_level == nullptr ||
-             (!order->bid && itch_order.price < side_data->best_level->price) ||
-             (order->bid && itch_order.price > side_data->best_level->price)) {
+             (order->bid == 0u && itch_order.price < side_data->best_level->price) ||
+             (order->bid != 0u && itch_order.price > side_data->best_level->price)) {
             side_data->best_level = price_level;
          }
       }
@@ -164,8 +164,8 @@ private:
 
       // is this level empty and was it the previous best price level?
       if (price_level->quantity == 0u && side_data->best_level == price_level) {
-         if (bid) {
-            for (auto pl = price_level; pl != side_data->last_level; --pl) {
+         if (bid == 0u) {
+            for (auto pl = price_level; pl != side_data->last_level; ++pl) {
                if (pl->quantity > 0u) {
                   side_data->best_level = pl;
                   return;
@@ -173,7 +173,7 @@ private:
             }
          }
          else {
-            for (auto pl = price_level; pl != side_data->last_level; ++pl) {
+            for (auto pl = price_level; pl != side_data->last_level; --pl) {
                if (pl->quantity > 0u) {
                   side_data->best_level = pl;
                   return;
