@@ -1,6 +1,8 @@
 #ifndef ORDER_BOOK_ITCH_V11_ORDER_BOOK_HPP
 #define ORDER_BOOK_ITCH_V11_ORDER_BOOK_HPP
 
+#include "itch/common.hpp"
+#include "itch/using.hpp"
 #include "itch/itch.hpp"
 
 #include "nostromo/mmap.hpp"
@@ -16,11 +18,11 @@
 // use std::vector instead of std::span for price levels.
 namespace order_book::itch::v11 {
 
-struct alignas(4) PriceLevel {
+struct PriceLevel {
    uint32_t quantity;
 };
 
-struct alignas(16) Order {
+struct Order {
    PriceLevel *level;
    uint32_t quantity;
    uint8_t bid;
@@ -136,6 +138,7 @@ private:
       const auto order = OrderFromId(itch_order.order_id);
       const auto price_level = PriceLevelFromIndex(*order);
       assert(price_level->quantity >= order->quantity);
+      order->quantity = 0u;
       price_level->quantity -= order->quantity;
    }
 };
@@ -150,43 +153,45 @@ public:
    OrderBooks(
          const auto max_order_id,
          const auto max_stock_code,
-         const auto &stock_prices,
-         const size_t page_size = 0u)
-         : orders_mmap_{max_order_id + 1u, page_size},
-           order_books_mmap_{max_stock_code + 1u, page_size},
+         const STOCK_PRICE_MAP &stock_price_map,
+         const size_t orders_page_size,
+         const size_t other_page_size)
+         : orders_mmap_{max_order_id + 1u, orders_page_size},
+           order_books_mmap_{max_stock_code + 1u, other_page_size},
            orders_{orders_mmap_.Span()},
            order_books_{order_books_mmap_.Span()} {
-      for (auto &[stock_code, pair]: stock_prices) {
-         auto addr = &order_books_[stock_code];
-         new(addr) OrderBook(orders_, pair.first, pair.second);
+      for (const auto &[stock_code, pair]: stock_price_map) {
+         const auto &[asks, bids] = pair;
+         const auto addr = &order_books_[stock_code];
+         new(addr) OrderBook(orders_, asks, bids);
       }
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderAdd(const ItchOrderAdd &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderAdd(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderExecuted(const ItchOrderExecuted &order) const {
       const auto &order_book = order_books_[order.stock_code];
       order_book.OrderExecuted(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderCancel(const ItchOrderCancel &order) const {
       const auto &order_book = order_books_[order.stock_code];
       order_book.OrderCancel(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderDelete(const ItchOrderDelete &order) const {
       const auto &order_book = order_books_[order.stock_code];
       order_book.OrderDelete(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderReplace(const ItchOrderReplace &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderReplace(order);

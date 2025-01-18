@@ -1,6 +1,7 @@
 .idea
 dependencies
 cmake-build-*
+build
 
 *.log
 *.swp

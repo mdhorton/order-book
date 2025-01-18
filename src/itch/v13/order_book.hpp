@@ -15,6 +15,9 @@
 // use std::span instead of std::vector for price levels.
 namespace order_book::itch::v13 {
 
+using ITCH_ORDER_ADD = ItchOrderAddIdx;
+using ITCH_ORDER_REPLACE = ItchOrderReplaceIdx;
+
 struct PriceLevel {
    uint32_t quantity;
 };
