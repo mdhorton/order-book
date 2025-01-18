@@ -172,7 +172,7 @@ private:
 
                const auto bid = bid_umap_.at(order->order_id);
                auto &[ask_uset, bid_uset] = stock_price_umap.at(order->stock_code);
-               assert(!ask_uset.empty() || !ask_uset.empty());
+               assert(!ask_uset.empty() || !bid_uset.empty());
 
                auto &price_uset = bid ? bid_uset : ask_uset;
 
