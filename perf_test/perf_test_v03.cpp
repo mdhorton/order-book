@@ -133,21 +133,19 @@ public:
 //         RunPerfTest<v09::OrderBooks, ItchOrderAdd, ItchOrderReplace>("09", sorted, page_size);
 //         RunPerfTest<v10::OrderBooks, ItchOrderAdd, ItchOrderReplace>("10", sorted, page_size);
 //         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>("11", sorted, page_size);
-//         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>("11", fpath, page_size);
-//         RunPerfTest<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", sorted_idx, page_size);
 
-//      Execute<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", "", sorted_idx);
-//      Execute<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", "", sorted_idx);
+      Execute<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", "", sorted_idx);
+      Execute<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", "", sorted_idx);
 
-//      Execute<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", "", sorted_idx);
-//      Execute<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", "", sorted_idx);
+      Execute<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", "", sorted_idx);
+      Execute<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", "", sorted_idx);
 
-//      Execute<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", "", sorted_idx);
-//      Execute<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", "", sorted_idx);
-//
-//      Execute<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", "", sorted_idx);
-//      Execute<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", "", sorted_idx);
-//
+      Execute<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", "", sorted_idx);
+      Execute<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", "", sorted_idx);
+
+      Execute<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", "", sorted_idx);
+      Execute<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", "", sorted_idx);
+
       Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
       Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
 

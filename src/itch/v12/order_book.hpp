@@ -154,9 +154,6 @@ public:
            order_books_{order_books_mmap_.Span()} {
       for (const auto &[stock_code, pair]: stock_price_map) {
          const auto &[asks, bids] = pair;
-         if (stock_code == 8705) {
-            printf("asks: %ld  bids: %ld\n", asks.size(), bids.size());
-         }
          const auto addr = &order_books_[stock_code];
          new(addr) OrderBook{orders_, asks, bids};
       }
