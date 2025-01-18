@@ -21,13 +21,11 @@ namespace order_book::itch {
 // 5) write the messages in binary format
 class ItchRawParser {
 public:
-   static void Run(const std::string &fpath) {
-      fmt::print("processing: {}\n", fpath);
-
+   static void Run(const std::string &fprefix) {
       const auto start = nostromo::TimeUtils::Now();
 
-      std::ifstream in(fpath + ".gz", std::ios_base::in | std::ios_base::binary);
-      std::ofstream out(fpath + ".bin", std::ios_base::out | std::ios_base::binary);
+      std::ifstream in(fprefix + ".gz", std::ios_base::in | std::ios_base::binary);
+      std::ofstream out(fprefix + ".bin", std::ios_base::out | std::ios_base::binary);
 
       boost::iostreams::filtering_istream filter;
       filter.push(boost::iostreams::gzip_decompressor()); // add decompressor to the filter stack.
@@ -291,8 +289,9 @@ int main() {
    namespace itch = order_book::itch;
 
    for (const auto &fname: itch::DATA_FILE_NAMES) {
-      const auto fpath = itch::DATA_DIR_BASE + fname;
-      itch::ItchRawParser::Run(fpath);
+      const auto fprefix = itch::DATA_DIR_BASE + fname;
+      fmt::print("processing: {}\n", fprefix);
+      itch::ItchRawParser::Run(fprefix);
    }
 
    return 0;

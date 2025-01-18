@@ -47,19 +47,29 @@ public:
 
       for (const auto &[stock_code, pair]: stock_price_umap) {
          const auto &[ask_uset, bid_uset] = pair;
+
          const auto ask_set = std::set<uint32_t>{ask_uset.begin(), ask_uset.end()};
          const auto bid_set = std::set<uint32_t>{bid_uset.begin(), bid_uset.end()};
+
          const auto asks = std::vector<uint32_t>{ask_set.begin(), ask_set.end()};
-         const auto bids = std::vector<uint32_t>{ask_set.begin(), ask_set.end()};
+         const auto bids = std::vector<uint32_t>{bid_set.begin(), bid_set.end()};
 
          const auto asks_reversed = std::vector<uint32_t>{asks.rbegin(), asks.rend()};
          const auto bids_reversed = std::vector<uint32_t>{bids.rbegin(), bids.rend()};
+
+         assert(ask_uset.size() == ask_set.size());
+         assert(ask_uset.size() == asks.size());
+         assert(ask_uset.size() == asks_reversed.size());
+         assert(bid_uset.size() == bid_set.size());
+         assert(bid_uset.size() == bids.size());
+         assert(bid_uset.size() == bids_reversed.size());
 
          stock_price_map[stock_code] = std::make_pair(asks, bids);
          stock_price_map_reverse_ask[stock_code] = std::make_pair(asks_reversed, bids);
          stock_price_map_reverse_bid[stock_code] = std::make_pair(asks, bids_reversed);
 
          const auto cnt = asks.size() + bids.size();
+         assert(cnt > 0);
          if (cnt > busiest_stock_cnt) {
             busiest_stock_cnt = cnt;
             busiest_stock_code = stock_code;
@@ -95,8 +105,8 @@ public:
 
 private:
    STOCK_PRICE_UMAP ReadOrders() {
-      STOCK_PRICE_UMAP stock_price_umap;
       const auto data = mmap_.Span();
+      STOCK_PRICE_UMAP stock_price_umap;
       uint64_t offset = 0;
 
       while (offset < data.size()) {
@@ -161,7 +171,7 @@ private:
                if (order->stock_code > max_stock_code_) max_stock_code_ = order->stock_code;
 
                const auto bid = bid_umap_.at(order->order_id);
-               auto &[ask_uset, bid_uset] = stock_price_umap[order->stock_code];
+               auto &[ask_uset, bid_uset] = stock_price_umap.at(order->stock_code);
                assert(!ask_uset.empty() || !ask_uset.empty());
 
                auto &price_uset = bid ? bid_uset : ask_uset;
@@ -185,6 +195,8 @@ private:
       std::ofstream out(fpath, std::ios_base::out | std::ios_base::binary);
 
       for (const auto &[stock_code, orders]: stock_order_umap_) {
+         assert(!orders.empty());
+
          for (const auto &[msg_type, order]: orders) {
             out.write((const char *) &msg_type, sizeof(char));
 
@@ -209,11 +221,11 @@ private:
                default:
                   throw std::runtime_error("unsupported msg_type: " + std::to_string(msg_type));
             }
-         }
-      }
 
-      if (out.fail()) {
-         throw nostromo::Error("write() failed", EX_INFO);
+            if (out.fail()) {
+               throw nostromo::Error("write() failed", EX_INFO);
+            }
+         }
       }
    }
 
@@ -232,8 +244,11 @@ private:
 
       for (const auto &[stock_code, orders]: stock_order_umap_) {
          const auto &[asks, bids] = stock_price_map[stock_code];
+         assert(!asks.empty() || !bids.empty());
+
          auto ask_map = Set2map(asks);
          auto bid_map = Set2map(bids);
+         assert(asks.size() == ask_map.size() && bids.size() == bid_map.size());
 
          for (const auto &[msg_type, order]: orders) {
             out.write((const char *) &msg_type, sizeof(char));
@@ -242,12 +257,11 @@ private:
                case 'A':
                case 'F': {
                   const auto o = (const ItchOrderAdd *) order;
-                  const auto price_idx = o->bid ? bid_map[o->price] : ask_map[o->price];
+                  const auto price_idx = o->bid ? bid_map.at(o->price) : ask_map.at(o->price);
                   const auto idx_order = ItchOrderAddIdx{
                         {{o->timestamp, o->order_id, o->stock_code},
                          o->bid, o->quantity, o->price},
-                        price_idx
-                  };
+                        price_idx};
                   out.write((const char *) &idx_order, sizeof(ItchOrderAddIdx));
                   break;
                }
@@ -263,23 +277,22 @@ private:
                   break;
                case 'U': {
                   const auto o = (const ItchOrderReplace *) order;
-                  const auto price_idx = bid_umap_[o->order_id] ? bid_map[o->price] : ask_map[o->price];
+                  const auto price_idx = bid_umap_.at(o->order_id) ? bid_map.at(o->price) : ask_map.at(o->price);
                   const auto idx_order = ItchOrderReplaceIdx{
                         {{o->timestamp, o->order_id, o->stock_code},
                          o->new_order_id, o->quantity, o->price},
-                        price_idx
-                  };
+                        price_idx};
                   out.write((const char *) &idx_order, sizeof(ItchOrderReplaceIdx));
                   break;
                }
                default:
                   throw std::runtime_error("unsupported msg_type: " + std::to_string(msg_type));
             }
-         }
-      }
 
-      if (out.fail()) {
-         throw nostromo::Error("write() failed", EX_INFO);
+            if (out.fail()) {
+               throw nostromo::Error("write() failed", EX_INFO);
+            }
+         }
       }
    }
 };
