@@ -2,6 +2,7 @@
 #define ORDER_BOOK_ITCH_V14_ORDER_BOOK_HPP
 
 #include "itch/common.hpp"
+#include "itch/using.hpp"
 #include "itch/itch.hpp"
 
 #include "nostromo/mmap.hpp"
@@ -89,8 +90,8 @@ public:
       return &levels_[order.bid][order.price_idx];
    }
 
-   [[nodiscard]] ALWAYS_INLINE static
-   PriceLevel *PriceLevelFromIndex(const Order &order) {
+   [[nodiscard]] ALWAYS_INLINE
+   static PriceLevel *PriceLevelFromIndex(const Order &order) {
       return order.level;
    }
 
@@ -134,61 +135,64 @@ public:
    OrderBooks(
          const auto max_order_id,
          const auto max_stock_code,
-         const auto &stock_prices,
-         const size_t page_size = 0u)
-         : orders_mmap_{max_order_id + 1u, page_size},
-           order_books_mmap_{max_stock_code + 1u, page_size},
-           price_levels_mmap_{CountPriceLevels(stock_prices), page_size},
+         const STOCK_PRICE_MAP &stock_price_map,
+         const size_t orders_page_size,
+         const size_t other_page_size)
+         : orders_mmap_{max_order_id + 1u, orders_page_size},
+           order_books_mmap_{max_stock_code + 1u, other_page_size},
+           price_levels_mmap_{CountPriceLevels(stock_price_map), other_page_size},
            orders_{orders_mmap_.Span()},
            order_books_{order_books_mmap_.Span()},
            price_levels_{price_levels_mmap_.Span()} {
       auto offset = 0u;
-      for (auto &[stock_code, pair]: stock_prices) {
-         const auto &[ask_prices, bid_prices] = pair;
-         const auto ask_levels = price_levels_.subspan(offset, ask_prices.size());
-         offset += ask_prices.size();
-         const auto bid_levels = price_levels_.subspan(offset, bid_prices.size());
-         offset += bid_prices.size();
+      for (const auto &[stock_code, pair]: stock_price_map) {
+         const auto &[asks, bids] = pair;
+         const auto ask_levels = price_levels_.subspan(offset, asks.size());
+         offset += asks.size();
+         const auto bid_levels = price_levels_.subspan(offset, bids.size());
+         offset += bids.size();
          const auto addr = &order_books_[stock_code];
          new(addr) OrderBook{orders_, ask_levels, bid_levels};
       }
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderAdd(const ItchOrderAddIdx &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderAdd(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderExecuted(const ItchOrderExecuted &order) const {
       const auto &order_book = order_books_[order.stock_code];
       order_book.OrderExecuted(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderCancel(const ItchOrderCancel &order) const {
       const auto &order_book = order_books_[order.stock_code];
       order_book.OrderCancel(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderDelete(const ItchOrderDelete &order) const {
       const auto &order_book = order_books_[order.stock_code];
       order_book.OrderDelete(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderReplace(const ItchOrderReplaceIdx &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderReplace(order);
    }
 
 private:
-   auto CountPriceLevels(const auto &stock_prices) const {
-      auto cnt = 0u;
-      for (const auto &[stock_code, pair]: stock_prices) {
-         cnt += pair.first.size() + pair.second.size();
+   [[nodiscard]]
+   static size_t CountPriceLevels(const STOCK_PRICE_MAP &stock_price_map) {
+      size_t cnt = 0u;
+      for (const auto &[stock_code, pair]: stock_price_map) {
+         const auto &[asks, bids] = pair;
+         cnt += asks.size() + bids.size();
       }
       return cnt;
    }

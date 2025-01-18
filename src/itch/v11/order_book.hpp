@@ -40,11 +40,11 @@ class OrderBook {
 public:
    OrderBook(
          const std::span<Order> orders,
-         const std::vector<uint32_t> &bid_prices,
-         const std::vector<uint32_t> &ask_prices)
+         const std::vector<uint32_t> &asks,
+         const std::vector<uint32_t> &bids)
          : orders_{orders} {
-      InitializePrices(bid_prices, bid_levels_, price_maps_[1]);
-      InitializePrices(ask_prices, ask_levels_, price_maps_[0]);
+      InitializePrices(asks, ask_levels_, price_maps_[0]);
+      InitializePrices(bids, bid_levels_, price_maps_[1]);
    }
 
    static void InitializePrices(

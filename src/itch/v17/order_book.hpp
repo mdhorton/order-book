@@ -12,7 +12,7 @@
 #include <vector>
 #include <span>
 
-// reversed bid prices so that the logic for finding
+// bid prices reversed so that the logic for finding
 // best bid is the same as finding best ask.
 namespace order_book::itch::v17 {
 
@@ -163,10 +163,10 @@ private:
    void CheckBestPriceLevel(PriceLevel *price_level, const uint8_t bid) {
       const auto side_data = &side_data_[bid];
 
-      // is this level empty and was it the previous best price level?
+      // is this level empty and the best price level?
       if (price_level->quantity == 0u && side_data->best_level == price_level) {
          for (auto pl = price_level; pl != side_data->last_level; ++pl) {
-            if (pl->quantity > 0u) {
+            if (pl->quantity != 0u) {
                side_data->best_level = pl;
                return;
             }
@@ -211,31 +211,31 @@ public:
       }
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderAdd(const ItchOrderAddIdx &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderAdd(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderExecuted(const ItchOrderExecuted &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderExecuted(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderCancel(const ItchOrderCancel &order) const {
       const auto &order_book = order_books_[order.stock_code];
       order_book.OrderCancel(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderDelete(const ItchOrderDelete &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderDelete(order);
    }
 
-   ALWAYS_INLINE
+   INLINE
    void OrderReplace(const ItchOrderReplaceIdx &order) const {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderReplace(order);

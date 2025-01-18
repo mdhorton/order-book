@@ -9,10 +9,10 @@
 //#include "itch/v09/order_book.hpp"
 //#include "itch/v10/order_book.hpp"
 //#include "itch/v11/order_book.hpp"
-//#include "itch/v12/order_book.hpp"
-//#include "itch/v13/order_book.hpp"
-//#include "itch/v14/order_book.hpp"
-//#include "itch/v15/order_book.hpp"
+#include "itch/v12/order_book.hpp"
+#include "itch/v13/order_book.hpp"
+#include "itch/v14/order_book.hpp"
+#include "itch/v15/order_book.hpp"
 #include "itch/v16/order_book.hpp"
 #include "itch/v17/order_book.hpp"
 #include "itch/v18/order_book.hpp"
@@ -98,8 +98,8 @@ public:
                offset += sizeof(REPLACE);
                break;
             }
-//            default:
-//               throw std::runtime_error("unsupported msg_type at offset: " + std::to_string(offset - 1));
+            default:
+               throw std::runtime_error("unsupported msg_type at offset: " + std::to_string(offset - 1));
          }
       }
 
@@ -112,9 +112,11 @@ public:
 public:
    void Run() {
       const auto sorted = std::string{"-sorted"};
-      const auto reverse = std::string{"-reverse-bid"};
+      const auto reverse_bid = std::string{"-reverse-bid"};
+      const auto reverse_ask = std::string{"-reverse-ask"};
       const auto sorted_idx = sorted + "-idx";
-      const auto sorted_idx_r = sorted_idx + reverse;
+      const auto sorted_idx_rbid = sorted_idx + reverse_bid;
+      const auto sorted_idx_rask = sorted_idx + reverse_ask;
 
 //      const auto orders_page_sizes = {nostromo::HugePage::SIZE_2MB, nostromo::HugePage::SIZE_1GB};
 //      const auto other_page_sizes = {nostromo::HugePage::SIZE_2MB, nostromo::HugePage::SIZE_1GB};
@@ -133,20 +135,27 @@ public:
 //         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>("11", sorted, page_size);
 //         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>("11", fpath, page_size);
 //         RunPerfTest<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", sorted_idx, page_size);
-//         RunPerfTest<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", sorted_idx, page_size);
-//         test.R<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", sorted_idx, page_size);
-//         RunPerfTest<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", sorted_idx, page_size);
-//         RunPerfTest<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", sorted_idx, page_size);
-//         RunPerfTest<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", sorted_idx, page_size);
 
+//      Execute<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", "", sorted_idx);
+//      Execute<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", "", sorted_idx);
+
+//      Execute<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", "", sorted_idx);
+//      Execute<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", "", sorted_idx);
+
+//      Execute<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", "", sorted_idx);
+//      Execute<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", "", sorted_idx);
+//
+//      Execute<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", "", sorted_idx);
+//      Execute<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", "", sorted_idx);
+//
       Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
       Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
 
-      Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse, sorted_idx_r);
-      Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse, sorted_idx_r);
+      Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse_bid, sorted_idx_rbid);
+      Execute<v17::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("17", reverse_bid, sorted_idx_rbid);
 
-      Execute<v18::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("18", reverse, sorted_idx_r);
-      Execute<v18::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("18", reverse, sorted_idx_r);
+      Execute<v18::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("18", reverse_ask, sorted_idx_rask);
+      Execute<v18::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("18", reverse_ask, sorted_idx_rask);
    }
 };
 

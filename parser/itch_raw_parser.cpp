@@ -142,10 +142,6 @@ public:
          }
       }
 
-      if (out.fail()) {
-         throw nostromo::Error("write() failed", EX_INFO);
-      }
-
       const auto elap = nostromo::TimeUtils::Now() - start;
       const auto ops = Utils::Ops(elap.count(), order_cnt);
 
@@ -200,6 +196,7 @@ private:
       ItchOrderCancel order{};
       SetBaseFields(order, *itch);
       order.quantity = Quantity(itch->quantity);
+      assert(order.quantity != 0);
       WriteParsed(out, 'X', &order, sizeof(ItchOrderCancel));
    }
 
@@ -243,33 +240,48 @@ private:
          const std::streamsize n) {
       out.write(reinterpret_cast<const char *>(&msg_type), sizeof(char));
       out.write(reinterpret_cast<const char *>(obj), n);
+
+      if (out.fail()) {
+         throw nostromo::Error("write() failed", EX_INFO);
+      }
    }
 
    static uint16_t StockCode(const __be16 stock_code) noexcept {
-      return be16toh(stock_code);
+      auto v = be16toh(stock_code);
+      assert(v != 0);
+      return v;
    }
 
    static uint32_t OrderId(const __be64 order_id) noexcept {
-      return static_cast<uint32_t>(be64toh(order_id));
+      auto v = static_cast<uint32_t>(be64toh(order_id));
+      assert(v != 0);
+      return v;
    }
 
    static uint32_t Quantity(const __be32 quantity) noexcept {
-      return be32toh(quantity);
+      auto v = be32toh(quantity);
+      assert(v != 0);
+      return v;
    }
 
    static uint32_t Price(const __be32 price) noexcept {
-      return be32toh(price);
+      auto v = be32toh(price);
+      assert(v != 0);
+      return v;
    }
 
    static uint64_t Timestamp(const __u8 *timestamp) noexcept {
-      return static_cast<uint64_t>(0) << 56 |
-             static_cast<uint64_t>(0) << 48 |
-             static_cast<uint64_t>(timestamp[0]) << 40 |
-             static_cast<uint64_t>(timestamp[1]) << 32 |
-             static_cast<uint64_t>(timestamp[2]) << 24 |
-             static_cast<uint64_t>(timestamp[3]) << 16 |
-             static_cast<uint64_t>(timestamp[4]) << 8 |
-             static_cast<uint64_t>(timestamp[5]);
+      auto v =
+            static_cast<uint64_t>(0) << 56 |
+            static_cast<uint64_t>(0) << 48 |
+            static_cast<uint64_t>(timestamp[0]) << 40 |
+            static_cast<uint64_t>(timestamp[1]) << 32 |
+            static_cast<uint64_t>(timestamp[2]) << 24 |
+            static_cast<uint64_t>(timestamp[3]) << 16 |
+            static_cast<uint64_t>(timestamp[4]) << 8 |
+            static_cast<uint64_t>(timestamp[5]);
+      assert(v != 0);
+      return v;
    }
 };
 

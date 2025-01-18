@@ -36,9 +36,12 @@ public:
       const auto start = nostromo::TimeUtils::Now();
 
       STOCK_PRICE_UMAP stock_price_umap = ReadOrders();
+
       STOCK_PRICE_MAP stock_price_map{};
       STOCK_PRICE_MAP stock_price_map_reverse_bid{};
+      STOCK_PRICE_MAP stock_price_map_reverse_ask{};
       STOCK_PRICE_MAP stock_price_map_busiest{};
+
       uint16_t busiest_stock_code = 0;
       size_t busiest_stock_cnt = 0;
 
@@ -49,9 +52,11 @@ public:
          const auto asks = std::vector<uint32_t>{ask_set.begin(), ask_set.end()};
          const auto bids = std::vector<uint32_t>{ask_set.begin(), ask_set.end()};
 
-         stock_price_map[stock_code] = std::make_pair(asks, bids);
-
+         const auto asks_reversed = std::vector<uint32_t>{asks.rbegin(), asks.rend()};
          const auto bids_reversed = std::vector<uint32_t>{bids.rbegin(), bids.rend()};
+
+         stock_price_map[stock_code] = std::make_pair(asks, bids);
+         stock_price_map_reverse_ask[stock_code] = std::make_pair(asks_reversed, bids);
          stock_price_map_reverse_bid[stock_code] = std::make_pair(asks, bids_reversed);
 
          const auto cnt = asks.size() + bids.size();
@@ -68,9 +73,11 @@ public:
 
       ExportOrdersSorted(fpath_bin);
       ExportOrdersSortedIdx(fpath_bin + "-idx", stock_price_map);
+      ExportOrdersSortedIdx(fpath_bin + "-idx-reverse-ask", stock_price_map_reverse_ask);
       ExportOrdersSortedIdx(fpath_bin + "-idx-reverse-bid", stock_price_map_reverse_bid);
 
       MetadataIO::Write(fpath_meta, max_order_id_, max_stock_code_, stock_price_map);
+      MetadataIO::Write(fpath_meta + "-reverse-ask", max_order_id_, max_stock_code_, stock_price_map_reverse_ask);
       MetadataIO::Write(fpath_meta + "-reverse-bid", max_order_id_, max_stock_code_, stock_price_map_reverse_bid);
 
       const auto elap = nostromo::TimeUtils::Now() - start;
@@ -101,16 +108,23 @@ private:
             case 'A':
             case 'F': {
                const auto order = reinterpret_cast<ItchOrderAdd *>(&data[offset]);
+
+               auto stock_exists = stock_order_umap_.contains(order->stock_code);
                auto &orders = stock_order_umap_[order->stock_code];
+               if (stock_exists) assert(!orders.empty());
+
                orders.emplace_back(msg_type, order);
 
                if (order->order_id > max_order_id_) max_order_id_ = order->order_id;
                if (order->stock_code > max_stock_code_) max_stock_code_ = order->stock_code;
 
                auto &[ask_uset, bid_uset] = stock_price_umap[order->stock_code];
-               auto &price_uset = order->bid ? bid_uset : ask_uset;
+               if (stock_exists) assert(!ask_uset.empty() || !bid_uset.empty());
 
+               auto &price_uset = order->bid ? bid_uset : ask_uset;
                price_uset.insert(order->price);
+
+               assert(!bid_umap_.contains(order->order_id));
                bid_umap_[order->order_id] = order->bid;
 
                offset += sizeof(ItchOrderAdd);
@@ -119,41 +133,41 @@ private:
             case 'E':
             case 'C': {
                const auto order = reinterpret_cast<ItchOrderExecuted *>(&data[offset]);
-               auto &orders = stock_order_umap_[order->stock_code];
+               auto &orders = stock_order_umap_.at(order->stock_code);
                orders.emplace_back(msg_type, order);
-
                offset += sizeof(ItchOrderExecuted);
                break;
             }
             case 'X': {
                const auto order = reinterpret_cast<ItchOrderCancel *>(&data[offset]);
-               auto &orders = stock_order_umap_[order->stock_code];
+               auto &orders = stock_order_umap_.at(order->stock_code);
                orders.emplace_back(msg_type, order);
-
                offset += sizeof(ItchOrderCancel);
                break;
             }
             case 'D': {
                const auto order = reinterpret_cast<ItchOrderDelete *>(&data[offset]);
-               auto &orders = stock_order_umap_[order->stock_code];
+               auto &orders = stock_order_umap_.at(order->stock_code);
                orders.emplace_back(msg_type, order);
-
                offset += sizeof(ItchOrderDelete);
                break;
             }
             case 'U': {
                const auto order = reinterpret_cast<ItchOrderReplace *>(&data[offset]);
-               auto &orders = stock_order_umap_[order->stock_code];
+               auto &orders = stock_order_umap_.at(order->stock_code);
                orders.emplace_back(msg_type, order);
 
                if (order->order_id > max_order_id_) max_order_id_ = order->order_id;
                if (order->stock_code > max_stock_code_) max_stock_code_ = order->stock_code;
 
-               const auto bid = bid_umap_[order->order_id];
+               const auto bid = bid_umap_.at(order->order_id);
                auto &[ask_uset, bid_uset] = stock_price_umap[order->stock_code];
+               assert(!ask_uset.empty() || !ask_uset.empty());
+
                auto &price_uset = bid ? bid_uset : ask_uset;
 
                price_uset.insert(order->price);
+               assert(!bid_umap_.contains(order->new_order_id));
                bid_umap_[order->new_order_id] = bid;
 
                offset += sizeof(ItchOrderReplace);
