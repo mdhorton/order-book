@@ -15,9 +15,6 @@
 // track best price level.
 namespace order_book::itch::v15 {
 
-using ITCH_ORDER_ADD = ItchOrderAddIdx;
-using ITCH_ORDER_REPLACE = ItchOrderReplaceIdx;
-
 struct PriceLevel {
    uint32_t quantity;
    uint32_t price;

@@ -18,6 +18,11 @@ class PerfTester:
             bin_suffix = '-sorted'
             order_add = 'ItchOrderAdd'
             order_replace = 'ItchOrderReplace'
+        elif version < 'v17':
+            meta_suffix = ''
+            bin_suffix = '-sorted-idx'
+            order_add = 'ItchOrderAddIdx'
+            order_replace = 'ItchOrderReplaceIdx'
         else:
             meta_suffix = '-reverse-bid'
             bin_suffix = '-sorted-idx-reverse-bid'
