@@ -162,7 +162,7 @@ private:
    void CheckBestPriceLevel(PriceLevel *price_level, const uint8_t bid) {
       const auto side_data = &side_data_[bid];
 
-      // is this level empty and the best price level?
+      // is this level empty and is it the best price level?
       if (price_level->quantity == 0u && side_data->best_level == price_level) {
          if (bid == 0u) {
             for (auto pl = price_level; pl != side_data->last_level; ++pl) {
@@ -253,12 +253,14 @@ public:
 private:
    [[nodiscard]]
    static size_t CountPriceLevels(const STOCK_PRICE_MAP &stock_price_map) {
-      size_t cnt = 0u;
+      size_t total_count = 0u;
       for (const auto &[stock_code, pair]: stock_price_map) {
          const auto &[asks, bids] = pair;
-         cnt += asks.size() + bids.size();
+         const auto cnt = asks.size() + bids.size();
+         assert(cnt > 0);
+         total_count += cnt;
       }
-      return cnt;
+      return total_count;
    }
 };
 

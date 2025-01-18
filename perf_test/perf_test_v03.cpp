@@ -16,6 +16,10 @@
 #include "itch/v16/order_book.hpp"
 #include "itch/v17/order_book.hpp"
 #include "itch/v18/order_book.hpp"
+#include "itch/v19/order_book.hpp"
+#include "itch/v20/order_book.hpp"
+#include "itch/v21/order_book.hpp"
+#include "itch/v22/order_book.hpp"
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
@@ -134,17 +138,17 @@ public:
 //         RunPerfTest<v10::OrderBooks, ItchOrderAdd, ItchOrderReplace>("10", sorted, page_size);
 //         RunPerfTest<v11::OrderBooks, ItchOrderAdd, ItchOrderReplace>("11", sorted, page_size);
 
-      Execute<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", "", sorted_idx);
-      Execute<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", "", sorted_idx);
+//      Execute<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", "", sorted_idx);
+//      Execute<v12::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("12", "", sorted_idx);
 
-      Execute<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", "", sorted_idx);
-      Execute<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", "", sorted_idx);
+//      Execute<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", "", sorted_idx);
+//      Execute<v13::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("13", "", sorted_idx);
 
-      Execute<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", "", sorted_idx);
-      Execute<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", "", sorted_idx);
+//      Execute<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", "", sorted_idx);
+//      Execute<v14::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("14", "", sorted_idx);
 
-      Execute<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", "", sorted_idx);
-      Execute<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", "", sorted_idx);
+//      Execute<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", "", sorted_idx);
+//      Execute<v15::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("15", "", sorted_idx);
 
       Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
       Execute<v16::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("16", "", sorted_idx);
@@ -154,6 +158,18 @@ public:
 
       Execute<v18::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("18", reverse_ask, sorted_idx_rask);
       Execute<v18::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("18", reverse_ask, sorted_idx_rask);
+
+      Execute<v19::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("19", reverse_ask, sorted_idx_rask);
+      Execute<v19::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("19", reverse_ask, sorted_idx_rask);
+
+      Execute<v20::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("20", reverse_ask, sorted_idx_rask);
+      Execute<v20::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("20", reverse_ask, sorted_idx_rask);
+
+      Execute<v21::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("21", reverse_ask, sorted_idx_rask);
+      Execute<v21::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("21", reverse_ask, sorted_idx_rask);
+
+      Execute<v22::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("22", reverse_ask, sorted_idx_rask);
+      Execute<v22::OrderBooks, ItchOrderAddIdx, ItchOrderReplaceIdx>("22", reverse_ask, sorted_idx_rask);
    }
 };
 

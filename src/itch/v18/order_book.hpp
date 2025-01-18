@@ -12,11 +12,13 @@
 #include <vector>
 #include <span>
 
+// added field PriceLevel.order_count.
 namespace order_book::itch::v18 {
 
 struct PriceLevel {
    uint32_t quantity;
    uint32_t price;
+   uint32_t order_count;
 };
 
 struct Order {
@@ -48,8 +50,8 @@ public:
          : orders_{orders},
            levels_{ask_levels, bid_levels},
            side_data_{
-                 {ask_levels.empty() ? nullptr : &ask_levels.front(), nullptr},
-                 {bid_levels.empty() ? nullptr : &bid_levels.front(), nullptr}} {
+                 {asks.empty() ? nullptr : &ask_levels.back(), nullptr},
+                 {bids.empty() ? nullptr : &bid_levels.back(), nullptr}} {
       InitializePrices(asks, levels_[0]);
       InitializePrices(bids, levels_[1]);
    }
@@ -76,6 +78,7 @@ public:
       assert(price_level->quantity >= itch_order.quantity);
       order->quantity -= itch_order.quantity;
       price_level->quantity -= itch_order.quantity;
+      --price_level->order_count;
       CheckBestPriceLevel(price_level, order->bid);
    }
 
@@ -87,6 +90,7 @@ public:
       assert(price_level->quantity > itch_order.quantity);
       order->quantity -= itch_order.quantity;
       price_level->quantity -= itch_order.quantity;
+      --price_level->order_count;
    }
 
    ALWAYS_INLINE
@@ -145,6 +149,7 @@ private:
       }
 
       price_level->quantity += order->quantity;
+      ++price_level->order_count;
    }
 
    ALWAYS_INLINE
@@ -154,6 +159,7 @@ private:
       assert(price_level->quantity >= order->quantity);
       order->quantity = 0u;
       price_level->quantity -= order->quantity;
+      --price_level->order_count;
       CheckBestPriceLevel(price_level, order->bid);
    }
 
@@ -161,9 +167,9 @@ private:
    void CheckBestPriceLevel(PriceLevel *price_level, const uint8_t bid) {
       const auto side_data = &side_data_[bid];
 
-      // is this level empty and the best price level?
-      if (price_level->quantity == 0u && side_data->best_level == price_level) {
-         for (auto pl = price_level; pl != side_data->last_level; --pl) {
+      // is this level empty and is it the best price level?
+      if (price_level->quantity == 0u && price_level == side_data->best_level) {
+         for (auto pl = price_level; pl != side_data->last_level; ++pl) {
             if (pl->quantity != 0u) {
                side_data->best_level = pl;
                return;
@@ -242,12 +248,14 @@ public:
 private:
    [[nodiscard]]
    static size_t CountPriceLevels(const STOCK_PRICE_MAP &stock_price_map) {
-      size_t cnt = 0u;
+      size_t total_count = 0u;
       for (const auto &[stock_code, pair]: stock_price_map) {
          const auto &[asks, bids] = pair;
-         cnt += asks.size() + bids.size();
+         const auto cnt = asks.size() + bids.size();
+         assert(cnt > 0);
+         total_count += cnt;
       }
-      return cnt;
+      return total_count;
    }
 };
 

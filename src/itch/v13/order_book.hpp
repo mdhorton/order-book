@@ -189,12 +189,14 @@ public:
 private:
    [[nodiscard]]
    static size_t CountPriceLevels(const STOCK_PRICE_MAP &stock_price_map) {
-      size_t cnt = 0u;
+      size_t total_count = 0u;
       for (const auto &[stock_code, pair]: stock_price_map) {
          const auto &[asks, bids] = pair;
-         cnt += asks.size() + bids.size();
+         const auto cnt = asks.size() + bids.size();
+         assert(cnt > 0);
+         total_count += cnt;
       }
-      return cnt;
+      return total_count;
    }
 };
 
