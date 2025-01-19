@@ -8,20 +8,22 @@ from datetime import datetime as dt
 class PerfTest:
     def run(self):
         test_time = dt.now().strftime('%Y-%m-%d_%H-%M-%S.%f')
+        fpath = f'/tmp/PerfTest_{test_time}.csv'
+
         build_type = 'release'
         compiler = 'g++-12'
         iters = 10
         always_inline = ""
         inline = ""
 
-        versions = ['v09', 'v10',
+        versions = ['v08', 'v09', 'v10',
                     'v11', 'v12', 'v13', 'v14', 'v15',
                     'v16', 'v17', 'v18', 'v19', 'v20',
-                    'v21', 'v22', 'v23', 'v24']
+                    'v21', 'v22', 'v23', 'v24', 'v25']
 
         self._execute('rm -fr build')
 
-        for version in versions[-2:]:
+        for version in versions[:3]:
             if version < 'v12':
                 meta_suffix = ''
                 bin_suffix = '-sorted'
@@ -40,10 +42,12 @@ class PerfTest:
 
             self._update_file(version, order_add, order_replace, always_inline, inline)
             self._rebuild(build_type, compiler)
-            self._run_test(test_time, compiler, version, meta_suffix, bin_suffix, iters)
+            print(fpath)
+            self._run_test(fpath, compiler, version, meta_suffix, bin_suffix, iters)
+        print(fpath)
 
-    def _run_test(self, test_time, test_id, version, meta_suffix, bin_suffix, iters):
-        cmd = f'build/perf_test/perf_test {test_time} {test_id} {version} "{meta_suffix}" "{bin_suffix}" {iters}'
+    def _run_test(self, fpath, test_id, version, meta_suffix, bin_suffix, iters):
+        cmd = f'build/perf_test/perf_test {fpath} {test_id} {version} "{meta_suffix}" "{bin_suffix}" {iters}'
         self._execute(cmd)
 
     def _rebuild(self, build_type, compiler):

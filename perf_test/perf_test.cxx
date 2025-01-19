@@ -21,7 +21,7 @@
 namespace order_book::itch::perf_test {
 
 struct Args {
-   std::string time = "default";
+   std::string fpath = "/tmp/PerfTest-default.csv";
    std::string id = "default";
    std::string version = "v11";
    std::string meta_suffix;
@@ -119,7 +119,7 @@ public:
       Args args{};
 
       if (argc == 7) {
-         args.time = argv[1];
+         args.fpath = argv[1];
          args.id = argv[2];
          args.version = argv[3];
          args.meta_suffix = argv[4];
@@ -137,8 +137,7 @@ int main(int argc, char **argv) {
    namespace itch = order_book::itch;
 
    const auto args = itch::perf_test::PerfTest::ParseArgs(argc, argv);
-   const auto out_path = "/tmp/PerfTest-" + args.time + ".csv";
-   std::ofstream out(out_path, std::ios_base::app);
+   std::ofstream out(args.fpath, std::ios_base::app);
 
    const auto cpuid = static_cast<int>(std::thread::hardware_concurrency()) - 1;
    fmt::print("using cpuid: {}\n", cpuid);

@@ -5,7 +5,7 @@
 #include "itch/itch.hpp"
 #include "itch/metadata_io.hpp"
 
-#include "itch/v24/order_book.hpp"
+#include "itch/v09/order_book.hpp"
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
@@ -21,9 +21,9 @@
 namespace order_book::itch::perf_test {
 
 struct Args {
-   std::string time = "default";
+   std::string fpath = "/tmp/PerfTest-default.csv";
    std::string id = "default";
-   std::string version = "v24";
+   std::string version = "v09";
    std::string meta_suffix;
    std::string bin_suffix;
    int iters = 1;
@@ -72,9 +72,9 @@ public:
          switch (msg_type) {
             case 'A':
             case 'F': {
-               const auto order = reinterpret_cast<ItchOrderAddIdx *>(&data[offset]);
+               const auto order = reinterpret_cast<ItchOrderAdd *>(&data[offset]);
                books.OrderAdd(*order);
-               offset += sizeof(ItchOrderAddIdx);
+               offset += sizeof(ItchOrderAdd);
                break;
             }
             case 'E':
@@ -97,9 +97,9 @@ public:
                break;
             }
             case 'U': {
-               const auto order = reinterpret_cast<ItchOrderReplaceIdx *>(&data[offset]);
+               const auto order = reinterpret_cast<ItchOrderReplace *>(&data[offset]);
                books.OrderReplace(*order);
-               offset += sizeof(ItchOrderReplaceIdx);
+               offset += sizeof(ItchOrderReplace);
                break;
             }
             default:
@@ -119,7 +119,7 @@ public:
       Args args{};
 
       if (argc == 7) {
-         args.time = argv[1];
+         args.fpath = argv[1];
          args.id = argv[2];
          args.version = argv[3];
          args.meta_suffix = argv[4];
@@ -137,8 +137,7 @@ int main(int argc, char **argv) {
    namespace itch = order_book::itch;
 
    const auto args = itch::perf_test::PerfTest::ParseArgs(argc, argv);
-   const auto out_path = "/tmp/PerfTest-" + args.time + ".csv";
-   std::ofstream out(out_path, std::ios_base::app);
+   std::ofstream out(args.fpath, std::ios_base::app);
 
    const auto cpuid = static_cast<int>(std::thread::hardware_concurrency()) - 1;
    fmt::print("using cpuid: {}\n", cpuid);
@@ -149,7 +148,7 @@ int main(int argc, char **argv) {
       auto test = itch::perf_test::PerfTest{args, fname, out};
 
       for (auto x = 0; x < args.iters; ++x) {
-         test.Execute<itch::v24::OrderBooks>();
+         test.Execute<itch::v09::OrderBooks>();
       }
    }
 }

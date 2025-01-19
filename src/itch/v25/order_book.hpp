@@ -1,5 +1,5 @@
-#ifndef ORDER_BOOK_ITCH_V24_ORDER_BOOK_HPP
-#define ORDER_BOOK_ITCH_V24_ORDER_BOOK_HPP
+#ifndef ORDER_BOOK_ITCH_V25_ORDER_BOOK_HPP
+#define ORDER_BOOK_ITCH_V25_ORDER_BOOK_HPP
 
 #include "itch/defs.hpp"
 #include "itch/common.hpp"
@@ -13,8 +13,9 @@
 #include <vector>
 #include <span>
 
-// CheckBestPriceLevel(Order&) -> CheckBestPriceLevel(PriceLevel *, const uint8_t).
-namespace order_book::itch::v24 {
+// copied from v18.
+// add [[unlikely]].
+namespace order_book::itch::v25 {
 
 struct PriceLevel {
    uint32_t quantity;
@@ -29,13 +30,13 @@ struct Order {
 } PACKED;
 
 struct SideData {
-   const std::span<PriceLevel> levels;
    const PriceLevel *last_level;
    PriceLevel *best_level;
 };
 
 class OrderBook {
    const std::span<Order> orders_;
+   const std::span<PriceLevel> levels_[2];
    SideData side_data_[2];
 
    ItchOrderAddIdx tmp_order_add_{};
@@ -49,11 +50,12 @@ public:
          const std::vector<uint32_t> &asks,
          const std::vector<uint32_t> &bids)
          : orders_{orders},
+           levels_{ask_levels, bid_levels},
            side_data_{
-                 {ask_levels, asks.empty() ? nullptr : &ask_levels.back(), nullptr},
-                 {bid_levels, bids.empty() ? nullptr : &bid_levels.back(), nullptr}} {
-      InitializePrices(asks, side_data_[0].levels);
-      InitializePrices(bids, side_data_[1].levels);
+                 {asks.empty() ? nullptr : &ask_levels.back(), nullptr},
+                 {bids.empty() ? nullptr : &bid_levels.back(), nullptr}} {
+      InitializePrices(asks, levels_[0]);
+      InitializePrices(bids, levels_[1]);
    }
 
    static void InitializePrices(
@@ -115,7 +117,7 @@ public:
 
    [[nodiscard]] ALWAYS_INLINE
    PriceLevel *PriceLevelFromPrice(const ItchOrderAddIdx &order) const {
-      return &side_data_[order.bid].levels[order.price_idx];
+      return &levels_[order.bid][order.price_idx];
    }
 
    [[nodiscard]] ALWAYS_INLINE
@@ -259,6 +261,6 @@ private:
    }
 };
 
-} // order_book::itch::v24
+} // order_book::itch::v25
 
-#endif //ORDER_BOOK_ITCH_V24_ORDER_BOOK_HPP
+#endif //ORDER_BOOK_ITCH_V25_ORDER_BOOK_HPP
