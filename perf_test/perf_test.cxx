@@ -5,7 +5,7 @@
 #include "itch/itch.hpp"
 #include "itch/metadata_io.hpp"
 
-#include "itch/v11/order_book.hpp"
+#include "itch/v26/order_book.hpp"
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
@@ -23,9 +23,9 @@ namespace order_book::itch::perf_test {
 struct Args {
    std::string fpath = "/tmp/PerfTest-default.csv";
    std::string id = "default";
-   std::string version = "v11";
-   std::string meta_suffix;
-   std::string bin_suffix;
+   std::string version = "v26";
+   std::string meta_suffix = "-reverse-bid";
+   std::string bin_suffix = "-sorted-idx-reverse-bid";
    int iters = 1;
 };
 
@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
       auto test = itch::perf_test::PerfTest{args, fname, out};
 
       for (auto x = 0; x < args.iters; ++x) {
-         test.Execute<itch::v11::OrderBooks>();
+         test.Execute<itch::v26::OrderBooks>();
       }
    }
 }

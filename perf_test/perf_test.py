@@ -12,7 +12,7 @@ class PerfTest:
 
         build_type = 'release'
         compiler = 'g++-12'
-        iters = 10
+        iters = 1
         always_inline = ""
         inline = ""
 
@@ -25,7 +25,7 @@ class PerfTest:
 
         self._execute('rm -fr build')
 
-        for version in ['v18', 'v26']:
+        for version in versions:
             if version < 'v12':
                 meta_suffix = ''
                 bin_suffix = '-sorted'

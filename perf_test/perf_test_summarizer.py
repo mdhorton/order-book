@@ -16,7 +16,8 @@ class PerfTestSummarizer:
             '/tmp/PerfTest_2025-01-19_20-16-01.006358.csv',
             '/tmp/PerfTest_2025-01-19_20-33-15.653785.csv',
             '/tmp/PerfTest_2025-01-19_21-08-13.945888.csv',
-            '/tmp/PerfTest_2025-01-19_21-29-01.230853.csv'
+            '/tmp/PerfTest_2025-01-19_21-29-01.230853.csv',
+            '/tmp/PerfTest_2025-01-19_22-23-46.327639.csv'
         ]
         for fpath in fpaths:
             print(fpath)
@@ -30,7 +31,8 @@ class PerfTestSummarizer:
         groups = []
         for _, grp in df.group_by(['test_id', 'version', 'fname'], maintain_order=True):
             grp = grp.sort('ns')
-            grp = grp[1:-1]
+            if len(grp) > 2:
+                grp = grp[1:-1]
             groups.append(grp)
 
         df = pl.concat(groups, rechunk=True)

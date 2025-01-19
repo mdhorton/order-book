@@ -24,9 +24,9 @@ struct Args {
    std::string fpath = "/tmp/PerfTest-default.csv";
    std::string id = "default";
    std::string version = "v26";
-   std::string meta_suffix;
-   std::string bin_suffix;
-   int iters = 1;
+   std::string meta_suffix = "-reverse-bid";
+   std::string bin_suffix = "-sorted-idx-reverse-bid";
+   int iters = 3;
 };
 
 class PerfTest {
