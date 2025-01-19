@@ -1,5 +1,5 @@
-#ifndef ORDER_BOOK_ITCH_V15_ORDER_BOOK_HPP
-#define ORDER_BOOK_ITCH_V15_ORDER_BOOK_HPP
+#ifndef ORDER_BOOK_ITCH_V24_ORDER_BOOK_HPP
+#define ORDER_BOOK_ITCH_V24_ORDER_BOOK_HPP
 
 #include "itch/defs.hpp"
 #include "itch/common.hpp"
@@ -13,12 +13,13 @@
 #include <vector>
 #include <span>
 
-// track best price level.
-namespace order_book::itch::v15 {
+// CheckBestPriceLevel(Order&) -> CheckBestPriceLevel(PriceLevel *, const uint8_t).
+namespace order_book::itch::v24 {
 
 struct PriceLevel {
    uint32_t quantity;
    uint32_t price;
+   uint32_t order_count;
 };
 
 struct Order {
@@ -27,12 +28,16 @@ struct Order {
    uint8_t bid;
 } PACKED;
 
+struct SideData {
+   const std::span<PriceLevel> levels;
+   const PriceLevel *last_level;
+   PriceLevel *best_level;
+};
+
 class OrderBook {
    const std::span<Order> orders_;
-   const std::span<PriceLevel> levels_[2];
-   const PriceLevel *last_levels_[2];
+   SideData side_data_[2];
 
-   PriceLevel *best_levels_[2]{};
    ItchOrderAddIdx tmp_order_add_{};
    ItchOrderDelete tmp_order_delete_{};
 
@@ -44,12 +49,11 @@ public:
          const std::vector<uint32_t> &asks,
          const std::vector<uint32_t> &bids)
          : orders_{orders},
-           levels_{ask_levels, bid_levels},
-           last_levels_{
-                 ask_levels.empty() ? nullptr : &ask_levels.back(),
-                 bid_levels.empty() ? nullptr : &bid_levels.front()} {
-      InitializePrices(asks, levels_[0]);
-      InitializePrices(bids, levels_[1]);
+           side_data_{
+                 {ask_levels, asks.empty() ? nullptr : &ask_levels.back(), nullptr},
+                 {bid_levels, bids.empty() ? nullptr : &bid_levels.back(), nullptr}} {
+      InitializePrices(asks, side_data_[0].levels);
+      InitializePrices(bids, side_data_[1].levels);
    }
 
    static void InitializePrices(
@@ -74,6 +78,7 @@ public:
       assert(level->quantity >= itch_order.quantity);
       order->quantity -= itch_order.quantity;
       level->quantity -= itch_order.quantity;
+      --level->order_count;
       CheckBestPriceLevel(level, order->bid);
    }
 
@@ -85,6 +90,7 @@ public:
       assert(level->quantity > itch_order.quantity);
       order->quantity -= itch_order.quantity;
       level->quantity -= itch_order.quantity;
+      --level->order_count;
    }
 
    ALWAYS_INLINE
@@ -109,7 +115,7 @@ public:
 
    [[nodiscard]] ALWAYS_INLINE
    PriceLevel *PriceLevelFromPrice(const ItchOrderAddIdx &order) const {
-      return &levels_[order.bid][order.price_idx];
+      return &side_data_[order.bid].levels[order.price_idx];
    }
 
    [[nodiscard]] ALWAYS_INLINE
@@ -133,16 +139,17 @@ private:
       order->bid = itch_order.bid;
 
       // is this level the new best level?
-      if (level->quantity == 0u) {
-         const auto pl = best_levels_[order->bid];
-         if (pl == nullptr ||
-             (order->bid == 0u && itch_order.price < pl->price) ||
-             (order->bid != 0u && itch_order.price > pl->price)) {
-            best_levels_[order->bid] = level;
+      if (level->quantity == 0u) [[unlikely]] {
+         const auto side_data = &side_data_[order->bid];
+         if (side_data->best_level == nullptr ||
+             (order->bid == 0u && itch_order.price < side_data->best_level->price) ||
+             (order->bid != 0u && itch_order.price > side_data->best_level->price)) {
+            side_data->best_level = level;
          }
       }
 
       level->quantity += order->quantity;
+      ++level->order_count;
    }
 
    ALWAYS_INLINE
@@ -152,33 +159,25 @@ private:
       assert(level->quantity >= order->quantity);
       order->quantity = 0u;
       level->quantity -= order->quantity;
+      --level->order_count;
       CheckBestPriceLevel(level, order->bid);
    }
 
    ALWAYS_INLINE
    void CheckBestPriceLevel(PriceLevel *level, const uint8_t bid) {
+      const auto side_data = &side_data_[bid];
+
       // is this level empty and is it the best price level?
-      if (level->quantity == 0u && best_levels_[bid] == level) {
-         const auto last_level = last_levels_[bid];
-
-         if (bid == 0u) {
-            for (auto pl = level; pl != last_level; ++pl) {
-               if (pl->quantity != 0u) {
-                  best_levels_[bid] = pl;
-                  return;
-               }
-            }
-         }
-         else {
-            for (auto pl = level; pl != last_level; --pl) {
-               if (pl->quantity != 0u) {
-                  best_levels_[bid] = pl;
-                  return;
-               }
+      if (level->quantity == 0u && level == side_data->best_level) [[unlikely]] {
+         for (auto pl = level; pl != side_data->last_level; ++pl) {
+            if (pl->quantity != 0u) {
+               side_data->best_level = pl;
+               return;
             }
          }
 
-         best_levels_[bid] = nullptr;
+         // all price levels are empty for this side.
+         side_data->best_level = nullptr;
       }
    }
 };
@@ -260,6 +259,6 @@ private:
    }
 };
 
-} // order_book::itch::v15
+} // order_book::itch::v24
 
-#endif //ORDER_BOOK_ITCH_V15_ORDER_BOOK_HPP
+#endif //ORDER_BOOK_ITCH_V24_ORDER_BOOK_HPP

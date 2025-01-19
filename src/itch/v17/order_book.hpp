@@ -74,22 +74,22 @@ public:
    ALWAYS_INLINE
    void OrderExecuted(const ItchOrderExecuted &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
+      const auto level = PriceLevelFromIndex(*order);
       assert(order->quantity >= itch_order.quantity);
-      assert(price_level->quantity >= itch_order.quantity);
+      assert(level->quantity >= itch_order.quantity);
       order->quantity -= itch_order.quantity;
-      price_level->quantity -= itch_order.quantity;
-      CheckBestPriceLevel(price_level, order->bid);
+      level->quantity -= itch_order.quantity;
+      CheckBestPriceLevel(level, order->bid);
    }
 
    ALWAYS_INLINE
    void OrderCancel(const ItchOrderCancel &itch_order) const {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
+      const auto level = PriceLevelFromIndex(*order);
       assert(order->quantity > itch_order.quantity);
-      assert(price_level->quantity > itch_order.quantity);
+      assert(level->quantity > itch_order.quantity);
       order->quantity -= itch_order.quantity;
-      price_level->quantity -= itch_order.quantity;
+      level->quantity -= itch_order.quantity;
    }
 
    ALWAYS_INLINE
@@ -130,43 +130,43 @@ public:
 private:
    ALWAYS_INLINE
    void OrderAddImpl(const ItchOrderAddIdx &itch_order) {
-      const auto price_level = PriceLevelFromPrice(itch_order);
+      const auto level = PriceLevelFromPrice(itch_order);
       const auto order = OrderFromId(itch_order.order_id);
 
-      order->level = price_level;
+      order->level = level;
       order->quantity = itch_order.quantity;
       order->bid = itch_order.bid;
 
       // is this level the new best level?
-      if (price_level->quantity == 0u) {
+      if (level->quantity == 0u) {
          const auto side_data = &side_data_[order->bid];
          if (side_data->best_level == nullptr ||
              (order->bid == 0u && itch_order.price < side_data->best_level->price) ||
              (order->bid != 0u && itch_order.price > side_data->best_level->price)) {
-            side_data->best_level = price_level;
+            side_data->best_level = level;
          }
       }
 
-      price_level->quantity += order->quantity;
+      level->quantity += order->quantity;
    }
 
    ALWAYS_INLINE
    void OrderDeleteImpl(const ItchOrderDelete &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
-      assert(price_level->quantity >= order->quantity);
+      const auto level = PriceLevelFromIndex(*order);
+      assert(level->quantity >= order->quantity);
       order->quantity = 0u;
-      price_level->quantity -= order->quantity;
-      CheckBestPriceLevel(price_level, order->bid);
+      level->quantity -= order->quantity;
+      CheckBestPriceLevel(level, order->bid);
    }
 
    ALWAYS_INLINE
-   void CheckBestPriceLevel(PriceLevel *price_level, const uint8_t bid) {
+   void CheckBestPriceLevel(PriceLevel *level, const uint8_t bid) {
       const auto side_data = &side_data_[bid];
 
       // is this level empty and is it the best price level?
-      if (price_level->quantity == 0u && side_data->best_level == price_level) {
-         for (auto pl = price_level; pl != side_data->last_level; ++pl) {
+      if (level->quantity == 0u && side_data->best_level == level) {
+         for (auto pl = level; pl != side_data->last_level; ++pl) {
             if (pl->quantity != 0u) {
                side_data->best_level = pl;
                return;
@@ -182,10 +182,10 @@ private:
 class OrderBooks {
    const nostromo::Mmap<Order> orders_mmap_;
    const nostromo::Mmap<OrderBook> order_books_mmap_;
-   const nostromo::Mmap<PriceLevel> price_levels_mmap_;
+   const nostromo::Mmap<PriceLevel> levels_mmap_;
    const std::span<Order> orders_;
    const std::span<OrderBook> order_books_;
-   const std::span<PriceLevel> price_levels_;
+   const std::span<PriceLevel> levels_;
 
 public:
    OrderBooks(
@@ -196,16 +196,16 @@ public:
          const size_t other_page_size)
          : orders_mmap_{max_order_id + 1u, orders_page_size},
            order_books_mmap_{max_stock_code + 1u, other_page_size},
-           price_levels_mmap_{CountPriceLevels(stock_price_map), other_page_size},
+           levels_mmap_{CountPriceLevels(stock_price_map), other_page_size},
            orders_{orders_mmap_.Span()},
            order_books_{order_books_mmap_.Span()},
-           price_levels_{price_levels_mmap_.Span()} {
+           levels_{levels_mmap_.Span()} {
       auto offset = 0u;
       for (const auto &[stock_code, pair]: stock_price_map) {
          const auto &[asks, bids] = pair;
-         const auto ask_levels = price_levels_.subspan(offset, asks.size());
+         const auto ask_levels = levels_.subspan(offset, asks.size());
          offset += asks.size();
-         const auto bid_levels = price_levels_.subspan(offset, bids.size());
+         const auto bid_levels = levels_.subspan(offset, bids.size());
          offset += bids.size();
          const auto addr = &order_books_[stock_code];
          new(addr) OrderBook{orders_, ask_levels, bid_levels, asks, bids};

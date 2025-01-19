@@ -5,7 +5,7 @@ import subprocess
 from datetime import datetime as dt
 
 
-class PerfTester:
+class PerfTest:
     def run(self):
         test_time = dt.now().strftime('%Y-%m-%d_%H-%M-%S.%f')
         build_type = 'release'
@@ -17,11 +17,11 @@ class PerfTester:
         versions = ['v09', 'v10',
                     'v11', 'v12', 'v13', 'v14', 'v15',
                     'v16', 'v17', 'v18', 'v19', 'v20',
-                    'v21', 'v22', 'v23']
+                    'v21', 'v22', 'v23', 'v24']
 
         self._execute('rm -fr build')
 
-        for version in versions:
+        for version in versions[-2:]:
             if version < 'v12':
                 meta_suffix = ''
                 bin_suffix = '-sorted'
@@ -68,4 +68,4 @@ class PerfTester:
 
 
 if __name__ == "__main__":
-    PerfTester().run()
+    PerfTest().run()

@@ -61,21 +61,21 @@ public:
    ALWAYS_INLINE
    void OrderExecuted(const ItchOrderExecuted &itch_order) const {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
+      const auto level = PriceLevelFromIndex(*order);
       assert(order->quantity >= itch_order.quantity);
-      assert(price_level->quantity >= itch_order.quantity);
+      assert(level->quantity >= itch_order.quantity);
       order->quantity -= itch_order.quantity;
-      price_level->quantity -= itch_order.quantity;
+      level->quantity -= itch_order.quantity;
    }
 
    ALWAYS_INLINE
    void OrderCancel(const ItchOrderCancel &itch_order) const {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
+      const auto level = PriceLevelFromIndex(*order);
       assert(order->quantity > itch_order.quantity);
-      assert(price_level->quantity > itch_order.quantity);
+      assert(level->quantity > itch_order.quantity);
       order->quantity -= itch_order.quantity;
-      price_level->quantity -= itch_order.quantity;
+      level->quantity -= itch_order.quantity;
    }
 
    ALWAYS_INLINE
@@ -116,23 +116,23 @@ public:
 private:
    ALWAYS_INLINE
    void OrderAddImpl(const ItchOrderAddIdx &itch_order) {
-      const auto price_level = PriceLevelFromPrice(itch_order);
+      const auto level = PriceLevelFromPrice(itch_order);
       const auto order = OrderFromId(itch_order.order_id);
 
-      order->level = price_level;
+      order->level = level;
       order->quantity = itch_order.quantity;
       order->bid = itch_order.bid;
 
-      price_level->quantity += itch_order.quantity;
+      level->quantity += itch_order.quantity;
    }
 
    ALWAYS_INLINE
    void OrderDeleteImpl(const ItchOrderDelete &itch_order) const {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
-      assert(price_level->quantity >= order->quantity);
+      const auto level = PriceLevelFromIndex(*order);
+      assert(level->quantity >= order->quantity);
       order->quantity = 0u;
-      price_level->quantity -= order->quantity;
+      level->quantity -= order->quantity;
    }
 };
 

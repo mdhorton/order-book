@@ -55,10 +55,10 @@ public:
 
    static void InitializePrices(
          const auto &prices,
-         const auto price_levels,
+         const auto levels,
          auto &price_map) {
       for (uint32_t idx = 0u; idx < prices.size(); ++idx) {
-         const auto addr = &price_levels[idx];
+         const auto addr = &levels[idx];
          new(addr) PriceLevel;
          price_map[prices[idx]] = addr;
       }
@@ -72,21 +72,21 @@ public:
    ALWAYS_INLINE
    void OrderExecuted(const ItchOrderExecuted &itch_order) const noexcept {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
+      const auto level = PriceLevelFromIndex(*order);
       assert(order->quantity >= itch_order.quantity);
-      assert(price_level->quantity >= itch_order.quantity);
+      assert(level->quantity >= itch_order.quantity);
       order->quantity -= itch_order.quantity;
-      price_level->quantity -= itch_order.quantity;
+      level->quantity -= itch_order.quantity;
    }
 
    ALWAYS_INLINE
    void OrderCancel(const ItchOrderCancel &itch_order) const noexcept {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
+      const auto level = PriceLevelFromIndex(*order);
       assert(order->quantity > itch_order.quantity);
-      assert(price_level->quantity > itch_order.quantity);
+      assert(level->quantity > itch_order.quantity);
       order->quantity -= itch_order.quantity;
-      price_level->quantity -= itch_order.quantity;
+      level->quantity -= itch_order.quantity;
    }
 
    ALWAYS_INLINE
@@ -126,33 +126,33 @@ public:
 private:
    ALWAYS_INLINE
    void OrderAddImpl(const ItchOrderAdd &itch_order) noexcept {
-      const auto price_level = PriceLevelFromPrice(itch_order);
+      const auto level = PriceLevelFromPrice(itch_order);
       const auto order = OrderFromId(itch_order.order_id);
 
-      order->level = price_level;
+      order->level = level;
       order->quantity = itch_order.quantity;
       order->bid = itch_order.bid;
 
-      price_level->quantity += itch_order.quantity;
+      level->quantity += itch_order.quantity;
    }
 
    ALWAYS_INLINE
    void OrderDeleteImpl(const ItchOrderDelete &itch_order) const noexcept {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(*order);
-      assert(price_level->quantity >= order->quantity);
+      const auto level = PriceLevelFromIndex(*order);
+      assert(level->quantity >= order->quantity);
       order->quantity = 0u;
-      price_level->quantity -= order->quantity;
+      level->quantity -= order->quantity;
    }
 };
 
 class OrderBooks {
    const nostromo::Mmap<Order> orders_mmap_;
    const nostromo::Mmap<OrderBook> order_books_mmap_;
-   const nostromo::Mmap<PriceLevel> price_levels_mmap_;
+   const nostromo::Mmap<PriceLevel> levels_mmap_;
    const std::span<Order> orders_;
    const std::span<OrderBook> order_books_;
-   const std::span<PriceLevel> price_levels_;
+   const std::span<PriceLevel> levels_;
 
 public:
    OrderBooks(
@@ -163,18 +163,18 @@ public:
          const size_t other_page_size)
          : orders_mmap_{max_order_id + 1u, orders_page_size},
            order_books_mmap_{max_stock_code + 1u, other_page_size},
-           price_levels_mmap_{CountPriceLevels(stock_price_map), other_page_size},
+           levels_mmap_{CountPriceLevels(stock_price_map), other_page_size},
            orders_{orders_mmap_.Span()},
            order_books_{order_books_mmap_.Span()},
-           price_levels_{price_levels_mmap_.Span()} {
+           levels_{levels_mmap_.Span()} {
       auto offset = 0u;
       for (const auto &[stock_code, pair]: stock_price_map) {
          const auto &[asks, bids] = pair;
          const auto ask_cnt = asks.size();
          const auto bid_cnt = bids.size();
-         const auto ask_levels = price_levels_.subspan(offset, ask_cnt);
+         const auto ask_levels = levels_.subspan(offset, ask_cnt);
          offset += ask_cnt;
-         const auto bid_levels = price_levels_.subspan(offset, bid_cnt);
+         const auto bid_levels = levels_.subspan(offset, bid_cnt);
          offset += bid_cnt;
          const auto addr = &order_books_[stock_code];
          new(addr) OrderBook{orders_, ask_levels, bid_levels, asks, bids};
