@@ -11,7 +11,8 @@ class PerfTestSummarizer:
             '/tmp/PerfTest-2025-01-19_13-44-21.853983.csv',
             '/tmp/PerfTest_2025-01-19_13-54-53.927726.csv',
             '/tmp/PerfTest_2025-01-19_14-23-35.628822.csv',
-            '/tmp/PerfTest_2025-01-19_14-30-48.892332.csv'
+            '/tmp/PerfTest_2025-01-19_14-30-48.892332.csv',
+            '/tmp/PerfTest_2025-01-19_14-59-29.749928.csv'
         ]
         for fpath in fpaths:
             print(fpath)

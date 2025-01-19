@@ -8,6 +8,7 @@ set(ORDER_BOOK_SOURCE_FILES
         itch/usings.hpp
         itch/itch.hpp
         itch/itch_raw.hpp
+        itch/metadata_io.hpp
         itch/v02/order_book.hpp
         itch/v03/order_book.hpp
         itch/v05/order_book.hpp
