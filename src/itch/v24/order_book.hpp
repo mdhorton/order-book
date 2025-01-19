@@ -139,7 +139,7 @@ private:
       order->bid = itch_order.bid;
 
       // is this level the new best level?
-      if (level->quantity == 0u) [[unlikely]] {
+      if (level->quantity == 0u) {
          const auto side_data = &side_data_[order->bid];
          if (side_data->best_level == nullptr ||
              (order->bid == 0u && itch_order.price < side_data->best_level->price) ||
@@ -168,7 +168,7 @@ private:
       const auto side_data = &side_data_[bid];
 
       // is this level empty and is it the best price level?
-      if (level->quantity == 0u && level == side_data->best_level) [[unlikely]] {
+      if (level->quantity == 0u && level == side_data->best_level) {
          for (auto pl = level; pl != side_data->last_level; ++pl) {
             if (pl->quantity != 0u) {
                side_data->best_level = pl;
