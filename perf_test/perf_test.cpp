@@ -5,7 +5,7 @@
 #include "itch/itch.hpp"
 #include "itch/metadata_io.hpp"
 
-#include "itch/v08/order_book.hpp"
+#include "itch/v26/order_book.hpp"
 
 #include "nostromo/mmap.hpp"
 #include "nostromo/time_utils.hpp"
@@ -23,7 +23,7 @@ namespace order_book::itch::perf_test {
 struct Args {
    std::string fpath = "/tmp/PerfTest-default.csv";
    std::string id = "default";
-   std::string version = "v08";
+   std::string version = "v26";
    std::string meta_suffix;
    std::string bin_suffix;
    int iters = 1;
@@ -72,9 +72,9 @@ public:
          switch (msg_type) {
             case 'A':
             case 'F': {
-               const auto order = reinterpret_cast<ItchOrderAdd *>(&data[offset]);
+               const auto order = reinterpret_cast<ItchOrderAddIdx *>(&data[offset]);
                books.OrderAdd(*order);
-               offset += sizeof(ItchOrderAdd);
+               offset += sizeof(ItchOrderAddIdx);
                break;
             }
             case 'E':
@@ -97,9 +97,9 @@ public:
                break;
             }
             case 'U': {
-               const auto order = reinterpret_cast<ItchOrderReplace *>(&data[offset]);
+               const auto order = reinterpret_cast<ItchOrderReplaceIdx *>(&data[offset]);
                books.OrderReplace(*order);
-               offset += sizeof(ItchOrderReplace);
+               offset += sizeof(ItchOrderReplaceIdx);
                break;
             }
             default:
@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
       auto test = itch::perf_test::PerfTest{args, fname, out};
 
       for (auto x = 0; x < args.iters; ++x) {
-         test.Execute<itch::v08::OrderBooks>();
+         test.Execute<itch::v26::OrderBooks>();
       }
    }
 }

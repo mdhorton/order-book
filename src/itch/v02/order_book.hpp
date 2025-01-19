@@ -1,6 +1,9 @@
 #ifndef ORDER_BOOK_ITCH_V02_ORDER_BOOK_HPP
 #define ORDER_BOOK_ITCH_V02_ORDER_BOOK_HPP
 
+#include "itch/defs.hpp"
+#include "itch/common.hpp"
+#include "itch/usings.hpp"
 #include "itch/itch.hpp"
 
 #include "nostromo/mmap.hpp"
@@ -38,45 +41,45 @@ struct Order {
 using PRICE_MAP = boost::unordered_flat_map<uint32_t, PriceLevel *>;
 
 class OrderBook {
-   std::span<Order> orders_;
+   const std::span<Order> orders_;
 
-   std::vector<PriceLevel> bid_levels_{};
    std::vector<PriceLevel> ask_levels_{};
-   PRICE_MAP bid_price_map_{};
+   std::vector<PriceLevel> bid_levels_{};
    PRICE_MAP ask_price_map_{};
-   uint32_t bid_count_{0};
+   PRICE_MAP bid_price_map_{};
    uint32_t ask_count_{0};
-   uint32_t best_bid_{0};
+   uint32_t bid_count_{0};
    uint32_t best_ask_{MAX_PRICE + 1};
+   uint32_t best_bid_{0};
    ItchOrderAdd tmp_order_add_{};
    ItchOrderDelete tmp_order_delete_{};
 
 public:
    OrderBook(
-         auto orders,
-         auto &bid_prices,
-         auto &ask_prices) :
-         orders_{orders} {
-      InitializePrices(bid_levels_, bid_prices, bid_price_map_);
-      InitializePrices(ask_levels_, ask_prices, ask_price_map_);
+         const auto orders,
+         const auto &asks,
+         const auto &bids)
+         : orders_{orders} {
+      InitializePrices(asks, ask_levels_, ask_price_map_);
+      InitializePrices(bids, bid_levels_, bid_price_map_);
    }
 
    static void InitializePrices(
-         auto &price_levels,
-         auto &prices,
+         const auto &prices,
+         auto &levels,
          auto &price_map) {
-      price_levels.reserve(prices.size());
+      levels.reserve(prices.size());
 
       uint16_t idx = 0;
-      for (auto price: prices) {
+      for (const auto price: prices) {
          PriceLevel level{};
          level.price = price;
          level.idx = idx;
-         price_levels.push_back(level);
+         levels.push_back(level);
          ++idx;
       }
 
-      for (auto &level: price_levels) {
+      for (auto &level: levels) {
          price_map[level.price] = &level;
       }
    }
@@ -87,13 +90,13 @@ public:
 
    void OrderExecuted(const ItchOrderExecuted &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(order->bid, order->price_idx);
+      const auto level = PriceLevelFromIndex(order->bid, order->price_idx);
 
-      assert(price_level->quantity >= itch_order.quantity);
-      price_level->quantity -= itch_order.quantity;
-      if (price_level->quantity == 0) {
+      assert(level->quantity >= itch_order.quantity);
+      level->quantity -= itch_order.quantity;
+      if (level->quantity == 0) {
          DecrementBidAskCount(order->bid);
-         CheckBestBidAsk(order, price_level);
+         CheckBestBidAsk(order, level);
          return;
       }
 
@@ -101,19 +104,17 @@ public:
       order->quantity -= itch_order.quantity;
       if (order->quantity == 0) {
          DecrementBidAskCount(order->bid);
-         RemoveOrder(order, price_level);
+         RemoveOrder(order, level);
       }
    }
 
    void OrderCancel(const ItchOrderCancel &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(order->bid, order->price_idx);
-
+      const auto level = PriceLevelFromIndex(order->bid, order->price_idx);
       assert(order->quantity > itch_order.quantity);
-      assert(price_level->quantity > itch_order.quantity);
-
+      assert(level->quantity > itch_order.quantity);
       order->quantity -= itch_order.quantity;
-      price_level->quantity -= itch_order.quantity;
+      level->quantity -= itch_order.quantity;
    }
 
    void OrderDelete(const ItchOrderDelete &itch_order) {
@@ -173,26 +174,26 @@ public:
 private:
    ALWAYS_INLINE
    void OrderAddImpl(const ItchOrderAdd &itch_order) {
-      auto price_level = PriceLevelFromPrice(itch_order.bid, itch_order.price);
+      auto level = PriceLevelFromPrice(itch_order.bid, itch_order.price);
       auto order = OrderFromId(itch_order.order_id);
 
       order->order_id = itch_order.order_id;
       order->quantity = itch_order.quantity;
-      order->price_idx = price_level->idx;
+      order->price_idx = level->idx;
       order->bid = itch_order.bid;
 
-      if (price_level->order_count == 0) {
-         price_level->head_order_idx = itch_order.order_id;
+      if (level->order_count == 0) {
+         level->head_order_idx = itch_order.order_id;
       }
       else {
-         order->prev_idx = price_level->tail_order_idx;
-         const auto tail_order = OrderFromId(price_level->tail_order_idx);
+         order->prev_idx = level->tail_order_idx;
+         const auto tail_order = OrderFromId(level->tail_order_idx);
          tail_order->next_idx = itch_order.order_id;
       }
 
-      price_level->tail_order_idx = itch_order.order_id;
-      price_level->quantity += itch_order.quantity;
-      ++price_level->order_count;
+      level->tail_order_idx = itch_order.order_id;
+      level->quantity += itch_order.quantity;
+      ++level->order_count;
 
       if (itch_order.bid) {
          if (itch_order.price > best_bid_) best_bid_ = itch_order.price;
@@ -207,31 +208,31 @@ private:
    ALWAYS_INLINE
    void OrderDeleteImpl(const ItchOrderDelete &itch_order) {
       const auto order = OrderFromId(itch_order.order_id);
-      const auto price_level = PriceLevelFromIndex(order->bid, order->price_idx);
+      const auto level = PriceLevelFromIndex(order->bid, order->price_idx);
 
       DecrementBidAskCount(order->bid);
 
-      assert(price_level->order_count > 0);
-      assert(price_level->quantity >= order->quantity);
+      assert(level->order_count > 0);
+      assert(level->quantity >= order->quantity);
 
-      --price_level->order_count;
-      price_level->quantity -= order->quantity;
+      --level->order_count;
+      level->quantity -= order->quantity;
 
-      if (price_level->order_count == 0) {
-         CheckBestBidAsk(order, price_level);
+      if (level->order_count == 0) {
+         CheckBestBidAsk(order, level);
          return;
       }
 
-      RemoveOrder(order, price_level);
+      RemoveOrder(order, level);
    }
 
    ALWAYS_INLINE
-   void CheckBestBidAsk(const Order *order, const PriceLevel *price_level) {
+   void CheckBestBidAsk(const Order *order, const PriceLevel *level) {
       // this price level is now empty.
       // do we need a new best bid?
       if (order->bid) {
          assert(!bid_levels_.empty());
-         if (price_level->price != best_bid_) {
+         if (level->price != best_bid_) {
             return;
          }
 
@@ -256,7 +257,7 @@ private:
 
       // do we need a new best ask?
       assert(!ask_levels_.empty());
-      if (price_level->price != best_ask_) {
+      if (level->price != best_ask_) {
          return;
       }
 
@@ -280,18 +281,18 @@ private:
    }
 
    ALWAYS_INLINE
-   void RemoveOrder(const Order *order, PriceLevel *price_level) {
+   void RemoveOrder(const Order *order, PriceLevel *level) {
       // is it the head order?
-      if (price_level->head_order_idx == order->order_id) {
+      if (level->head_order_idx == order->order_id) {
          // make the next order the new head order.
          const auto next_order = OrderFromId(order->next_idx);
-         price_level->head_order_idx = next_order->order_id;
+         level->head_order_idx = next_order->order_id;
       }
          // else is it the tail order?
-      else if (price_level->tail_order_idx == order->order_id) {
+      else if (level->tail_order_idx == order->order_id) {
          // make the prev order the new tail order.
          const auto prev_order = OrderFromId(order->prev_idx);
-         price_level->tail_order_idx = prev_order->order_id;
+         level->tail_order_idx = prev_order->order_id;
       }
          // otherwise it's somewhere in the middle.
       else {
@@ -316,7 +317,6 @@ private:
 };
 
 class OrderBooks {
-private:
    const nostromo::Mmap<Order> orders_mmap_;
    const nostromo::Mmap<OrderBook> order_books_mmap_;
    const std::span<Order> orders_;
@@ -326,38 +326,45 @@ public:
    explicit OrderBooks(
          const auto max_order_id,
          const auto max_stock_code,
-         const auto &stock_prices,
-         const size_t page_size = 0u)
-         : orders_mmap_{max_order_id + 1u, page_size},
-           order_books_mmap_{max_stock_code + 1u, page_size},
+         const STOCK_PRICE_MAP &stock_price_map,
+         const size_t orders_page_size,
+         const size_t other_page_size)
+         : orders_mmap_{max_order_id + 1u, orders_page_size},
+           order_books_mmap_{max_stock_code + 1u, other_page_size},
            orders_{orders_mmap_.Span()},
            order_books_{order_books_mmap_.Span()} {
-      for (auto &[stock_code, pair]: stock_prices) {
-         auto addr = &order_books_[stock_code];
-         new(addr) OrderBook(orders_, pair.first, pair.second);
+      for (const auto &[stock_code, pair]: stock_price_map) {
+         const auto &[asks, bids] = pair;
+         const auto addr = &order_books_[stock_code];
+         new(addr) OrderBook(orders_, asks, bids);
       }
    }
 
+   INLINE
    void OrderAdd(const ItchOrderAdd &order) {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderAdd(order);
    }
 
+   INLINE
    void OrderExecuted(const ItchOrderExecuted &order) {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderExecuted(order);
    }
 
+   INLINE
    void OrderCancel(const ItchOrderCancel &order) {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderCancel(order);
    }
 
+   INLINE
    void OrderDelete(const ItchOrderDelete &order) {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderDelete(order);
    }
 
+   INLINE
    void OrderReplace(const ItchOrderReplace &order) {
       auto &order_book = order_books_[order.stock_code];
       order_book.OrderReplace(order);
