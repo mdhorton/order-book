@@ -78,9 +78,9 @@ public:
       const auto level = PriceLevelFromIndex(*order);
       assert(order->quantity >= itch_order.quantity);
       assert(level->quantity >= itch_order.quantity);
+      assert(level->order_count > 0u);
       order->quantity -= itch_order.quantity;
       level->quantity -= itch_order.quantity;
-      --level->order_count;
       CheckBestPriceLevel(level, order->bid);
    }
 
@@ -90,9 +90,9 @@ public:
       const auto level = PriceLevelFromIndex(*order);
       assert(order->quantity > itch_order.quantity);
       assert(level->quantity > itch_order.quantity);
+      assert(level->order_count > 0u);
       order->quantity -= itch_order.quantity;
       level->quantity -= itch_order.quantity;
-      --level->order_count;
    }
 
    ALWAYS_INLINE
@@ -133,8 +133,8 @@ public:
 private:
    ALWAYS_INLINE
    void OrderAddImpl(const ItchOrderAddIdx &itch_order) {
-      const auto level = PriceLevelFromPrice(itch_order);
       const auto order = OrderFromId(itch_order.order_id);
+      const auto level = PriceLevelFromPrice(itch_order);
 
       order->level = level;
       order->quantity = itch_order.quantity;
@@ -159,6 +159,7 @@ private:
       const auto order = OrderFromId(itch_order.order_id);
       const auto level = PriceLevelFromIndex(*order);
       assert(level->quantity >= order->quantity);
+      assert(level->order_count > 0u);
       order->quantity = 0u;
       level->quantity -= order->quantity;
       --level->order_count;

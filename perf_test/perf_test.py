@@ -25,7 +25,7 @@ class PerfTest:
 
         self._execute('rm -fr build')
 
-        for version in versions[-1:]:
+        for version in ['v18', 'v26']:
             if version < 'v12':
                 meta_suffix = ''
                 bin_suffix = '-sorted'
