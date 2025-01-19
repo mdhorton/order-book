@@ -1,8 +1,9 @@
 #ifndef ORDER_BOOK_ITCH_V20_ORDER_BOOK_HPP
 #define ORDER_BOOK_ITCH_V20_ORDER_BOOK_HPP
 
+#include "itch/defs.hpp"
 #include "itch/common.hpp"
-#include "itch/using.hpp"
+#include "itch/usings.hpp"
 #include "itch/itch.hpp"
 
 #include "nostromo/mmap.hpp"
@@ -12,7 +13,7 @@
 #include <vector>
 #include <span>
 
-// moved levels field to SideData.
+// moved levels to SideData.
 namespace order_book::itch::v20 {
 
 struct PriceLevel {

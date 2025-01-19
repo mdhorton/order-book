@@ -1,3 +1,6 @@
+#define ALWAYS_INLINE __REPLACE__ALWAYS_INLINE__
+#define INLINE __REPLACE__INLINE__
+
 #include "itch/common.hpp"
 #include "itch/itch.hpp"
 #include "itch/metadata_io.hpp"
@@ -17,20 +20,31 @@
 
 namespace order_book::itch::perf_test {
 
+struct Args {
+   std::string time = "default";
+   std::string id = "default";
+   std::string version = "v11";
+   std::string meta_suffix;
+   std::string bin_suffix;
+   int iters = 1;
+};
+
 class PerfTest {
+   const Args &args_;
    const std::string &fname_;
    std::ofstream &out_;
 
 public:
-   explicit PerfTest(const std::string &fname, std::ofstream &out)
-         : fname_{fname},
+   explicit PerfTest(
+         const Args &args,
+         const std::string &fname,
+         std::ofstream &out)
+         : args_{args},
+           fname_{fname},
            out_{out} {}
 
    template<typename BOOKS>
    void Execute(
-         const std::string &test_id,
-         const std::string &meta_suffix,
-         const std::string &bin_suffix,
          const size_t orders_page_size = nostromo::HugePage::SIZE_1GB,
          const size_t other_page_size = nostromo::HugePage::SIZE_2MB) {
       const auto start = nostromo::TimeUtils::Now();
@@ -40,11 +54,11 @@ public:
             max_order_id,
             max_stock_code,
             stock_price_map
-      ] = MetadataIO::Read(fprefix + ".meta" + meta_suffix);
+      ] = MetadataIO::Read(fprefix + ".meta" + args_.meta_suffix);
 
       BOOKS books{max_order_id, max_stock_code, stock_price_map, orders_page_size, other_page_size};
 
-      const nostromo::Mmap<char> mmap{fprefix + ".bin" + bin_suffix};
+      const nostromo::Mmap<char> mmap{fprefix + ".bin" + args_.bin_suffix};
       const auto data = mmap.Span();
 
       uint64_t offset = 0;
@@ -96,36 +110,46 @@ public:
       const auto elap = nostromo::TimeUtils::Now() - start;
       const auto npo = static_cast<double>(elap.count()) / static_cast<double>(order_cnt);
 
-      out_ << test_id << "," << fname_ << "," << elap.count() << "," << order_cnt << "," << npo << std::endl;
-      fmt::print("test id: {}  ns/order: {:.4f}\n", test_id, npo);
+      out_ << args_.id << "," << args_.version << "," << fname_ << "," <<
+           elap.count() << "," << order_cnt << "," << npo << std::endl;
+      fmt::print("version: {}  ns/order: {:.4f}\n", args_.version, npo);
    }
 
-public:
-   void Run() {
-      const auto version = std::string{"__VERSION__"};
-      const auto meta_suffix = std::string{"__META_SUFFIX__"};
-      const auto bin_suffix = std::string{"__BIN_SUFFIX__"};
-      Execute<v11::OrderBooks>(version, meta_suffix, bin_suffix);
+   static auto ParseArgs(int argc, char **argv) {
+      Args args{};
+
+      if (argc == 7) {
+         args.time = argv[1];
+         args.id = argv[2];
+         args.version = argv[3];
+         args.meta_suffix = argv[4];
+         args.bin_suffix = argv[5];
+         args.iters = std::stoi(argv[6]);
+      }
+
+      return args;
    }
 };
 
 } // namespace order_book::itch::perf_test
 
 int main(int argc, char **argv) {
-   const auto test_id = argc == 2 ? std::string{argv[1]} : "default";
-   const auto out_path = "/tmp/PerfTest-" + test_id + ".csv";
-   std::ofstream out(out_path, std::ios_base::out);
+   namespace itch = order_book::itch;
+
+   const auto args = itch::perf_test::PerfTest::ParseArgs(argc, argv);
+   const auto out_path = "/tmp/PerfTest-" + args.time + ".csv";
+   std::ofstream out(out_path, std::ios_base::app);
 
    const auto cpuid = static_cast<int>(std::thread::hardware_concurrency()) - 1;
    fmt::print("using cpuid: {}\n", cpuid);
    nostromo::ThreadUtils::SetAffinity(cpuid);
 
-   namespace itch = order_book::itch;
-
    for (const auto &fname: itch::DATA_FILE_NAMES) {
       fmt::print("processing: {}\n", fname);
-      itch::perf_test::PerfTest{fname, out}.Run();
-   }
+      auto test = itch::perf_test::PerfTest{args, fname, out};
 
-   return 0;
+      for (auto x = 0; x < args.iters; ++x) {
+         test.Execute<itch::v11::OrderBooks>();
+      }
+   }
 }

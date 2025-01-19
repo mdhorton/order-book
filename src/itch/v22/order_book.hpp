@@ -1,8 +1,9 @@
 #ifndef ORDER_BOOK_ITCH_V22_ORDER_BOOK_HPP
 #define ORDER_BOOK_ITCH_V22_ORDER_BOOK_HPP
 
+#include "itch/defs.hpp"
 #include "itch/common.hpp"
-#include "itch/using.hpp"
+#include "itch/usings.hpp"
 #include "itch/itch.hpp"
 
 #include "nostromo/mmap.hpp"
@@ -12,7 +13,7 @@
 #include <vector>
 #include <span>
 
-// removed last_levels field.
+// removed last_levels.
 namespace order_book::itch::v22 {
 
 struct PriceLevel {

@@ -1,7 +1,7 @@
 #ifndef ORDER_BOOK_ITCH_METADATA_IO_HPP
 #define ORDER_BOOK_ITCH_METADATA_IO_HPP
 
-#include "itch/using.hpp"
+#include "itch/usings.hpp"
 
 #include "nostromo/error.hpp"
 
