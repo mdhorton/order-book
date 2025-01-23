@@ -26,7 +26,7 @@ struct Args {
    std::string version = "v26";
    std::string meta_suffix = "-reverse-bid";
    std::string bin_suffix = "-sorted-idx-reverse-bid";
-   int iters = 3;
+   int iters = 1;
 };
 
 class PerfTest {

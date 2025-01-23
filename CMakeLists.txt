@@ -12,7 +12,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 SET(CMAKE_CXX_FLAGS "-fno-rtti -march=native")
-SET(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+#SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -fprofile-generate")
+SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -fprofile-use")
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -fno-omit-frame-pointer -UNDEBUG")
 SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -fno-omit-frame-pointer -fsanitize=address")
 
