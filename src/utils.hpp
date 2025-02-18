@@ -8,10 +8,10 @@ namespace order_book {
 
 class Utils {
 public:
-   static auto Ops(const uint64_t elap, const uint64_t count) {
-      const auto elap_d = static_cast<double>(elap);
-      const auto order_cnt_d = static_cast<double>(count);
-      return static_cast<uint64_t>(order_cnt_d / (elap_d / 1'000'000'000.0));
+   static auto Ops(const uint64_t nanos, const uint64_t count) {
+      const auto nanos_d = static_cast<double>(nanos);
+      const auto count_d = static_cast<double>(count);
+      return static_cast<uint64_t>(count_d / (nanos_d / 1'000'000'000.0));
    }
 };
 
