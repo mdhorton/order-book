@@ -10,7 +10,7 @@
 #include "nostromo/random.hpp"
 
 static void BM_simd(benchmark::State &state) {
-   static auto RNG = nostromo::Random::MT19937();
+   static auto RNG = nos::Random::MT19937();
 
    static constexpr int8_t lookup_table[] = {
          0, 0, 0, 0,
@@ -57,10 +57,10 @@ struct Data {
 };
 
 static void BM_ptr(benchmark::State &state) {
-   static auto RNG = nostromo::Random::MT19937_64();
+   static auto RNG = nos::Random::MT19937_64();
 
    constexpr auto size = 8u;
-   const auto data = nostromo::MemoryUtils::Calloc<Data>(size);
+   const auto data = nos::MemoryUtils::Calloc<Data>(size);
 
    for (auto idx = 0u; idx < size; ++idx) {
       data[idx].v1 = RNG();
@@ -92,10 +92,10 @@ static void BM_ptr(benchmark::State &state) {
 }
 
 static void BM_span(benchmark::State &state) {
-   static auto RNG = nostromo::Random::MT19937_64();
+   static auto RNG = nos::Random::MT19937_64();
 
    constexpr auto size = 8u;
-   const auto raw_data = nostromo::MemoryUtils::Calloc<Data>(size);
+   const auto raw_data = nos::MemoryUtils::Calloc<Data>(size);
    std::span data{raw_data, size};
 
    for (auto idx = 0u; idx < size; ++idx) {
@@ -128,7 +128,7 @@ static void BM_span(benchmark::State &state) {
 }
 
 static void BM_std_unordered_map(benchmark::State &state) {
-   static auto RNG = nostromo::Random::MT19937_64();
+   static auto RNG = nos::Random::MT19937_64();
 
    uint64_t p1 = RNG();
    std::unordered_map<uint64_t, uint64_t> map;
@@ -147,7 +147,7 @@ static void BM_std_unordered_map(benchmark::State &state) {
 }
 
 static void BM_boost_unordered_flat_map(benchmark::State &state) {
-   static auto RNG = nostromo::Random::MT19937_64();
+   static auto RNG = nos::Random::MT19937_64();
 
    uint64_t p1 = RNG();
    boost::unordered_flat_map<uint64_t, uint64_t> map;
@@ -166,7 +166,7 @@ static void BM_boost_unordered_flat_map(benchmark::State &state) {
 }
 
 static void BM_div_32(benchmark::State &state) {
-      static auto RNG = nostromo::Random::MT19937();
+      static auto RNG = nos::Random::MT19937();
 
    static constexpr int32_t div = 100;
    int32_t p1 = RNG();
@@ -184,7 +184,7 @@ static void BM_div_32(benchmark::State &state) {
 // calculate a decent quality 32-bit hash.
 // https://github.com/skeeto/hash-prospector
 static void BM_hash(benchmark::State &state) {
-   static auto RNG = nostromo::Random::MT19937();
+   static auto RNG = nos::Random::MT19937();
 
    uint32_t x = RNG();
 

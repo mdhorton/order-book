@@ -189,9 +189,9 @@ private:
 };
 
 class OrderBooks {
-   const nostromo::Mmap<Order> orders_mmap_;
-   const nostromo::Mmap<OrderBook> order_books_mmap_;
-   const nostromo::Mmap<PriceLevel> levels_mmap_;
+   const nos::Mmap<Order> orders_mmap_;
+   const nos::Mmap<OrderBook> order_books_mmap_;
+   const nos::Mmap<PriceLevel> levels_mmap_;
    const std::span<Order> orders_;
    const std::span<OrderBook> order_books_;
    const std::span<PriceLevel> levels_;

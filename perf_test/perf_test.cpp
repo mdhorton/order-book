@@ -45,9 +45,9 @@ public:
 
    template<typename BOOKS>
    void Execute(
-         const size_t orders_page_size = nostromo::HugePage::SIZE_1GB,
-         const size_t other_page_size = nostromo::HugePage::SIZE_2MB) {
-      const auto start = nostromo::TimeUtils::Now();
+         const size_t orders_page_size = nos::HugePage::SIZE_1GB,
+         const size_t other_page_size = nos::HugePage::SIZE_2MB) {
+      const auto start = nos::TimeUtils::Now();
       const auto fprefix = itch::DATA_DIR_BASE + fname_;
 
       const auto [
@@ -58,7 +58,7 @@ public:
 
       BOOKS books{max_order_id, max_stock_code, stock_price_map, orders_page_size, other_page_size};
 
-      const nostromo::Mmap<char> mmap{fprefix + ".bin" + args_.bin_suffix};
+      const nos::Mmap<char> mmap{fprefix + ".bin" + args_.bin_suffix};
       const auto data = mmap.Span();
 
       uint64_t offset = 0;
@@ -107,7 +107,7 @@ public:
          }
       }
 
-      const auto elap = nostromo::TimeUtils::Now() - start;
+      const auto elap = nos::TimeUtils::Now() - start;
       const auto npo = static_cast<double>(elap.count()) / static_cast<double>(order_cnt);
 
       out_ << args_.id << "," << args_.version << "," << fname_ << "," <<
@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
 
    const auto cpuid = static_cast<int>(std::thread::hardware_concurrency()) - 1;
    fmt::print("using cpuid: {}\n", cpuid);
-   nostromo::ThreadUtils::SetAffinity(cpuid);
+   nos::ThreadUtils::SetAffinity(cpuid);
 
    for (const auto &fname: itch::DATA_FILE_NAMES) {
       fmt::print("processing: {}\n", fname);

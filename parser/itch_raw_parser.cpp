@@ -22,7 +22,7 @@ namespace order_book::itch {
 class ItchRawParser {
 public:
    static void Run(const std::string &fprefix) {
-      const auto start = nostromo::TimeUtils::Now();
+      const auto start = nos::Now();
 
       std::ifstream in(fprefix + ".gz", std::ios_base::in | std::ios_base::binary);
       std::ofstream out(fprefix + ".bin", std::ios_base::out | std::ios_base::binary);
@@ -41,7 +41,7 @@ public:
             if (filter.eof()) {
                break;
             }
-            throw nostromo::Error("read failed", EX_INFO);
+            throw nos::Error("read failed", EX_INFO);
          }
 
          switch (msg_type) {
@@ -140,7 +140,7 @@ public:
          }
       }
 
-      const auto elap = nostromo::TimeUtils::Now() - start;
+      const auto elap = nos::Now() - start;
       const auto ops = Utils::Ops(elap.count(), order_cnt);
 
       fmt::print("{}", fmt::format(
@@ -227,7 +227,7 @@ private:
          const std::streamsize n) {
       in.read(buf, n);
       if (in.gcount() != n) {
-         throw nostromo::Error("read() failed", EX_INFO);
+         throw nos::Error("read() failed", EX_INFO);
       }
    }
 
@@ -240,7 +240,7 @@ private:
       out.write(reinterpret_cast<const char *>(obj), n);
 
       if (out.fail()) {
-         throw nostromo::Error("write() failed", EX_INFO);
+         throw nos::Error("write() failed", EX_INFO);
       }
    }
 

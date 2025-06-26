@@ -21,7 +21,7 @@ private:
       const auto n = (std::streamsize) sizeof(T);
       in.read((char *) &obj, n);
       if (in.gcount() != n) {
-         throw nostromo::Error("read() failed", EX_INFO);
+         throw nos::Error("read() failed", EX_INFO);
       }
       return obj;
    }
@@ -47,7 +47,7 @@ private:
       }
 
       if (out.fail()) {
-         throw nostromo::Error("write() failed", EX_INFO);
+         throw nos::Error("write() failed", EX_INFO);
       }
    }
 

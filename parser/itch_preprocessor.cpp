@@ -18,7 +18,7 @@ using STOCK_ORDER_UMAP = UMAP<uint16_t, std::vector<std::pair<char, ItchBase *>>
 
 class ItchPreprocessor {
    const std::string &fprefix_;
-   const nostromo::Mmap<char> mmap_;
+   const nos::Mmap<char> mmap_;
 
    STOCK_ORDER_UMAP stock_order_umap_;
    UMAP<uint32_t, uint8_t> bid_umap_;
@@ -33,7 +33,7 @@ public:
            mmap_{fprefix + ".bin"} {}
 
    void Run() {
-      const auto start = nostromo::TimeUtils::Now();
+      const auto start = nos::TimeUtils::Now();
 
       STOCK_PRICE_UMAP stock_price_umap = ReadOrders();
 
@@ -90,7 +90,7 @@ public:
       MetadataIO::Write(fpath_meta + "-reverse-ask", max_order_id_, max_stock_code_, stock_price_map_reverse_ask);
       MetadataIO::Write(fpath_meta + "-reverse-bid", max_order_id_, max_stock_code_, stock_price_map_reverse_bid);
 
-      const auto elap = nostromo::TimeUtils::Now() - start;
+      const auto elap = nos::TimeUtils::Now() - start;
       const auto ops = Utils::Ops(elap.count(), order_cnt_);
 
       fmt::print("{}", fmt::format(
@@ -223,7 +223,7 @@ private:
             }
 
             if (out.fail()) {
-               throw nostromo::Error("write() failed", EX_INFO);
+               throw nos::Error("write() failed", EX_INFO);
             }
          }
       }
@@ -290,7 +290,7 @@ private:
             }
 
             if (out.fail()) {
-               throw nostromo::Error("write() failed", EX_INFO);
+               throw nos::Error("write() failed", EX_INFO);
             }
          }
       }
